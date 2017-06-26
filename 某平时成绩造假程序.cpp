@@ -30,20 +30,22 @@
 int main() {
 	try {
 		std::string filename, resource, outputfilename;
-		int32_t ud = 0, ne = 0;
+		int32_t ud = 0, ne = 0, ts = 0;
 		DC::UIBox::SetWindow();
 		system("cls");
 		std::cout << "源数据文件名:";
 		std::cin >> filename;
 		std::cout << "波动(整数并且最好是2的倍数):";
 		std::cin >> ud;
+		std::cout << "总分数(整数):";
+		std::cin >> ts;
 		std::cout << "执行次数(整数):";
 		std::cin >> ne;
 		std::cout << "将结果输出到:";
 		std::cin >> outputfilename;
 
 		system("cls");
-		std::cout << "源数据文件名:" << filename << "\n波动:" << ud << "\n执行次数:" << ne << "\n结果输出到:" << outputfilename << "\n开始执行吗?(Y/N)";
+		std::cout << "源数据文件名:" << filename << "\n波动:" << ud << "\n总分数:" << ts << "\n执行次数:" << ne << "\n结果输出到:" << outputfilename << "\n开始执行吗?(Y/N)";
 		char ch(_getch());
 		if (!(ch == 'Y' || ch == 'y')) exit(0);
 		int32_t min = 0 - ud / 2, max = ud / 2;
@@ -73,6 +75,16 @@ int main() {
 		for (auto p = vresource.begin(); p != vresource.end();) {
 			bool flag = true;//生成的序列中只能有一个值与源数据相等
 			std::vector<int32_t> line;
+			if (*p == ts) {
+				line.resize(ne);
+				std::fill(line.begin(), line.end(), ts); 
+				p++;
+				for (const auto& p2 : line)
+					temp += DC::STR::toString(p2) + "\t";
+				if (!temp.empty()) temp.erase(temp.rbegin().base() - 1);
+				temp.push_back('\n');
+				continue;
+			}
 			auto getlineaverage = [&line]()->int32_t {
 				if (line.empty()) return 0;
 				return std::accumulate(line.begin(), line.end(), 0) / line.size();
@@ -85,9 +97,19 @@ int main() {
 
 			if (getlineaverage() != *p)
 				continue;
+			
+			auto judgets = [&line,&ts] {
+				for (const auto& px : line) {
+					if (px > ts) return false;
+				}
+				return true;				
+				};
+
+			if (!judgets()) continue;
+
 			p++;
 			for (const auto& p2 : line)
-				temp += DC::STR::toString(p2) + " ";
+				temp += DC::STR::toString(p2) + "\t";
 			if (!temp.empty()) temp.erase(temp.rbegin().base() - 1);
 			temp.push_back('\n');
 		}
