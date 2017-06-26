@@ -25,6 +25,7 @@
 //#include "DC_SELECT.h"
 //#include "DC_jsonBuilder.h"
 //#include "base64\base64.h"
+#include <numeric>
 
 int main() {
 	try {
@@ -69,13 +70,24 @@ int main() {
 		vresource.push_back(DC::STR::toType<int32_t>(temp));
 		temp.clear();
 
-		for (const auto& p : vresource) {
+		for (auto p = vresource.begin(); p != vresource.end();) {
 			bool flag = true;//生成的序列中只能有一个值与源数据相等
+			std::vector<int32_t> line;
+			auto getlineaverage = [&line]()->int32_t {
+				if (line.empty()) return 0;
+				return std::accumulate(line.begin(), line.end(), 0) / line.size();
+			};
 			for (int32_t i = 0; i < ne; i++) {
-				auto srv = makesingleresult(p);
-				if (srv == p&&flag) { flag = false; i--; continue; }
-				temp += DC::STR::toString(srv) + " ";
+				auto srv = makesingleresult(*p);
+				if (srv == *p&&flag) { flag = false; i--; continue; }
+				line.emplace_back(srv);
 			}
+
+			if (getlineaverage() != *p)
+				continue;
+			p++;
+			for (const auto& p2 : line)
+				temp += DC::STR::toString(p2) + " ";
 			if (!temp.empty()) temp.erase(temp.rbegin().base() - 1);
 			temp.push_back('\n');
 		}
