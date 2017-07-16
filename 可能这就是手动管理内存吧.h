@@ -14,19 +14,29 @@ struct ChunkInfo {
 
 namespace AllocatorSpace {
 
-	static const DC::size_t AllocatorInternalArrayDefaultSize(5);
+	static const DC::size_t AllocatorInternalArrayDefaultSize(5);//绝不能小于1
+
+	void fill(ChunkInfo* ptr, const DC::size_t& _Size, const int& _Val) {
+		//ChunkInfo look[10] = { 0 };
+		//memcpy(look, ptr, sizeof(ChunkInfo)*(_Size + 5));
+
+		memset(ptr, _Val, sizeof(ChunkInfo)*_Size);
+
+		//memcpy(look, ptr, sizeof(ChunkInfo)*(_Size + 5));
+	}
 
 	bool construct(ChunkInfo*& ptr, const DC::size_t& _Size) {
-		auto temp = malloc(sizeof(ChunkInfo)*_Size);
+		auto temp = reinterpret_cast<ChunkInfo*>(malloc(sizeof(ChunkInfo)*_Size));
 		if (temp == NULL) return false;
-		memset(temp, 0, sizeof(ChunkInfo)*_Size);
-		ptr = reinterpret_cast<ChunkInfo*>(temp);
+		fill(temp, _Size, 0);
+		ptr = temp;
 		return true;
 	}
 
-	void destruct(ChunkInfo* ptr) {
+	void destruct(ChunkInfo*& ptr) {
 		if (ptr == nullptr || ptr == NULL) return;
 		free(ptr);
+		ptr = nullptr;
 	}
 
 	bool expand(ChunkInfo*& ptr, const DC::size_t& _Old_Size, const DC::size_t& _New_Size) {
@@ -86,6 +96,7 @@ public:
 
 		//分配成功
 		entire.size = _Size;
+		idle[0] = entire;
 		return true;
 	}
 
@@ -95,6 +106,9 @@ public:
 		free(entire.ptr);
 		entire.ptr = nullptr;
 		entire.size = 0;
+
+		AllocatorSpace::fill(idle, idle_size, 0);
+		AllocatorSpace::fill(used, used_size, 0);
 	}
 
 	bool has_memory()const noexcept {
@@ -110,6 +124,8 @@ public:
 
 private:
 	void construct_info() {
+		static_assert(AllocatorSpace::AllocatorInternalArrayDefaultSize >= 1, "AllocatorInternalArrayDefaultSize must bigger than 1");
+
 		if (!(AllocatorSpace::construct(idle, AllocatorSpace::AllocatorInternalArrayDefaultSize) && AllocatorSpace::construct(used, AllocatorSpace::AllocatorInternalArrayDefaultSize))) {
 			this->~Allocator();
 			//在这里抛无法分配内存异常
@@ -123,7 +139,8 @@ private:
 		AllocatorSpace::destruct(used);
 	}
 
-private:
+//private:
+public:
 	//从环境申请的内存信息
 	ChunkInfo entire;
 
