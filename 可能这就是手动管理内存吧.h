@@ -7,145 +7,43 @@ namespace DC {
 	using size_t = unsigned int;
 }
 
-struct ChunkInfo {
-	void *ptr;
-	DC::size_t size;
-};
+template <typename _Ty>
+class MemoryPool final {
+	/*
+	这是一个线程安全的内存池。
+	1.线程安全保证
+	2.RAII保证
+	3.支持自定义删除器
 
-namespace AllocatorSpace {
+	接口(详见http://zh.cppreference.com/w/cpp/concept/Allocator)
+	allocate(size_t)分配可以容纳size_t个value_type对象
+	allocate(size_t,pointer)
+	deallocate(pointer,size_t)
+	construct(pointer,args)
+	destory(pointer) 注意，这个默认是调用构造函数，但是如果是有deleter的话，那就用deleter来删除
+	max_size()
+	operator==()
+	operator!=()
+	shrink_to_fit() 删掉未使用的内存，这个
 
-	static const DC::size_t AllocatorInternalArrayDefaultSize(5);//绝不能小于1
+	实现
+	1.内存块(一片可容纳value_type对象的内存)使用单向链表管理，一个节点包含一个ptr、一个bool值以及两个std::automic<bool>，此bool值指示该节点的ptr是否已被分配，第一个std::automic<bool>标识是否可以在此时对该节点进行修改，第二个std::automic<bool>则标识此节点是否正在被删除
+	2.allocate时，在尾部增加一个节点，然后返回该节点指向的内存
+	3.需要修改一个节点时，首先锁上该节点的std::automic<bool>，然后对该节点进行修改
+	4.需要在一个位置上删除节点时，
+	5.不允许在一个链表中插入一个节点
 
-	void fill(ChunkInfo* ptr, const DC::size_t& _Size, const int& _Val) {
-		//ChunkInfo look[10] = { 0 };
-		//memcpy(look, ptr, sizeof(ChunkInfo)*(_Size + 5));
-
-		memset(ptr, _Val, sizeof(ChunkInfo)*_Size);
-
-		//memcpy(look, ptr, sizeof(ChunkInfo)*(_Size + 5));
-	}
-
-	bool construct(ChunkInfo*& ptr, const DC::size_t& _Size) {
-		auto temp = reinterpret_cast<ChunkInfo*>(malloc(sizeof(ChunkInfo)*_Size));
-		if (temp == NULL) return false;
-		fill(temp, _Size, 0);
-		ptr = temp;
-		return true;
-	}
-
-	void destruct(ChunkInfo*& ptr) {
-		if (ptr == nullptr || ptr == NULL) return;
-		free(ptr);
-		ptr = nullptr;
-	}
-
-	bool expand(ChunkInfo*& ptr, const DC::size_t& _Old_Size, const DC::size_t& _New_Size) {
-		if (_New_Size < _Old_Size) return false;
-		if (_New_Size == _Old_Size) return true;
-
-		ChunkInfo *new_ptr = nullptr;
-		if (!construct(new_ptr, _New_Size)) return false;
-
-		memcpy(new_ptr, ptr, sizeof(ChunkInfo)*_Old_Size);
-		destruct(ptr);
-
-		ptr = new_ptr;
-
-		return true;
-	}
-
-}
-
-class Allocator final {
+	之所以使用自旋+std::automic<bool>而不是互斥量，出于两个考虑，1.std::mutex占用空间太大，不划算；2.根据https://www.zhihu.com/question/38857029/answer/78480263，在等待时间短的情况下，自旋的性能比互斥量更好；
+	*/
 public:
+	using value_type = _Ty;
+	using pointer = _Ty*;
+	using const_pointer = const pointer;
+	using size_type = DC::size_t;
+
+private:
 	using size_t = DC::size_t;
 
+public:
 private:
-	using byte_t = DC::byte_t;
-
-public:
-	Allocator() :entire{ nullptr,0 }, idle(nullptr), used(nullptr), idle_size(0), used_size(0) {
-		construct_info();
-	}
-
-	Allocator(const size_t& _Size) :entire{ nullptr,0 }, idle(nullptr), used(nullptr), idle_size(0), used_size(0) {
-		construct_info();
-		if (!set_memory(_Size)) {
-			this->~Allocator();
-			//在这里抛无法分配内存异常
-		}
-	}
-
-	Allocator(const Allocator&) = delete;
-
-	~Allocator()noexcept {
-		free_memory();
-		destruct_info();
-	}
-
-public:
-	bool set_memory(const size_t& _Size)noexcept {
-		//如果已经分配过了，返回false
-		if (this->has_memory()) return false;
-
-		if ((entire.ptr = malloc(_Size)) == NULL) {
-			//分配失败
-			entire.ptr = nullptr;
-			return false;
-		}
-
-		//分配成功
-		entire.size = _Size;
-		idle[0] = entire;
-		return true;
-	}
-
-	void free_memory()noexcept {
-		if (!this->has_memory()) return;
-
-		free(entire.ptr);
-		entire.ptr = nullptr;
-		entire.size = 0;
-
-		AllocatorSpace::fill(idle, idle_size, 0);
-		AllocatorSpace::fill(used, used_size, 0);
-	}
-
-	bool has_memory()const noexcept {
-		return entire.ptr != nullptr;
-	}
-
-	void* allocate(const size_t& _Size)noexcept {}
-
-	template <typename _Ty>
-	_Ty* allocate()noexcept {}
-
-	void deallocate(void *_Ptr) {}
-
-private:
-	void construct_info() {
-		static_assert(AllocatorSpace::AllocatorInternalArrayDefaultSize >= 1, "AllocatorInternalArrayDefaultSize must bigger than 1");
-
-		if (!(AllocatorSpace::construct(idle, AllocatorSpace::AllocatorInternalArrayDefaultSize) && AllocatorSpace::construct(used, AllocatorSpace::AllocatorInternalArrayDefaultSize))) {
-			this->~Allocator();
-			//在这里抛无法分配内存异常
-		}
-
-		idle_size = used_size = AllocatorSpace::AllocatorInternalArrayDefaultSize;
-	}
-
-	void destruct_info()noexcept {
-		AllocatorSpace::destruct(idle);
-		AllocatorSpace::destruct(used);
-	}
-
-//private:
-public:
-	//从环境申请的内存信息
-	ChunkInfo entire;
-
-	//储存空闲、已用内存信息的数组
-	ChunkInfo *idle, *used;
-	//数组长度
-	DC::size_t idle_size, used_size;
 };
