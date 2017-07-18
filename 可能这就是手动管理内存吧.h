@@ -166,17 +166,22 @@ public:
 
 	template <typename _Pr>
 	value_type& find(const _Pr& _Pred) {//传入可调用对象，find函数将会遍历所有节点并以节点储存的对象作为参数来调用可调用对象。
-		                                                       //可调用对象返回false，意味着继续遍历；可调用对象返回true，则find函数将返回这个对象的引用；
+		                                                       //可调用对象的返回值必须是bool。可调用对象返回false，意味着继续遍历；可调用对象返回true，则find函数将返回这个对象的引用；
 		                                                       //如果没有找到对象，将会抛出DC::Exception异常。
 		if (LockFreeLinkedListSpace::load_acquire(m_head) == nullptr)
 			throw DC::Exception("LockFreeLinkedList::find", "object not found");
 
-		for (LockFreeLinkedListSpace::node<value_type>* ptr(LockFreeLinkedListSpace::load_acquire(m_head)); ; ptr = ptr->load_next()) {
+		for (LockFreeLinkedListSpace::node<value_type>* ptr(LockFreeLinkedListSpace::load_acquire(m_head)); ptr != nullptr; ptr = ptr->load_next())
 			if (_Pred(*ptr->object)) return *ptr->object;
-			if (ptr->load_next() == nullptr) break;
-		}
 
 		throw DC::Exception("LockFreeLinkedList::find", "object not found");
+	}
+
+	template <typename _Pr>
+	void traverse(const _Pr& _Pred) {//传入可调用对象，traverse函数将会遍历所有节点并以节点储存的对象作为参数来调用可调用对象。
+										//可调用对象返回值将会被忽略
+		for (LockFreeLinkedListSpace::node<value_type>* ptr(LockFreeLinkedListSpace::load_acquire(m_head)); ptr != nullptr; ptr = ptr->load_next())
+			_Pred(*ptr->object);
 	}
 
 private:
@@ -193,18 +198,15 @@ private:
 
 	void put_into_head(node_type *ptr)noexcept {//把一个已经构造的节点设为头结点
 		std::lock_guard<SpinLock> head_locker(m_head_lock);//拿头指针修改锁
-		auto head_ptr = LockFreeLinkedListSpace::load_acquire(m_head);
-		if (head_ptr == nullptr) {
-			//头结点当前为空，特殊处理
-			put_into_head_empty_handle(head_ptr);
+		if (LockFreeLinkedListSpace::load_acquire(m_head) == nullptr) {
+			//头结点当前为空
+			LockFreeLinkedListSpace::store_release(m_head, ptr);
 			return;
 		}
-		//头结点当前非空，正常处理
-		//std::lock_guard<SpinLock> node_locker(head_ptr->sl);//锁当前头节点的锁
-	}
-
-	void put_into_head_empty_handle(node_type *ptr) {//不加锁的
-
+		//头结点当前非空
+		std::lock_guard<SpinLock> node_locker(LockFreeLinkedListSpace::load_acquire(m_head)->sl);//锁当前头节点的锁
+		ptr->store_next(LockFreeLinkedListSpace::load_acquire(m_head));
+		LockFreeLinkedListSpace::store_release(m_head, ptr);
 	}
 
 private:
