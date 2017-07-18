@@ -52,17 +52,17 @@ namespace LockFreeLinkedListSpace {
 		template <typename ...ARGS>
 		node(ARGS&& ...args) : object(new _Ty(std::forward<ARGS>(args)...)), next_ptr(nullptr) {}
 
-		~node() {
+		~node()noexcept {
 			if (object)
 				delete object;
 		}
 
 	public:
-		inline node<_Ty>* load_next()const {
+		inline node<_Ty>* load_next()const noexcept {
 			return load_acquire(next_ptr);
 		}
 
-		inline void store_next(node<_Ty>* new_ptr) {
+		inline void store_next(node<_Ty>* new_ptr)noexcept {
 			store_release(next_ptr, new_ptr);
 		}
 
@@ -74,50 +74,92 @@ namespace LockFreeLinkedListSpace {
 		std::atomic<node<_Ty>*> next_ptr;
 	};
 
+	template <typename atomicXD, typename ...ARGS>
+	atomicXD* make_node(ARGS&& ...args)noexcept {//不会抛异常，如果内存分配失败或者构造函数抛了异常，只会返回nullptr
+		using node_type = atomicXD;
+
+		auto ptr = malloc(sizeof(node_type));
+		if (ptr == NULL) return nullptr;
+
+		try {
+			new(ptr) node_type(std::forward<ARGS>(args)...);
+		}
+		catch (...) {
+			free(ptr);
+			return nullptr;
+		}
+
+		return reinterpret_cast<node_type*>(ptr);
+	}
+
+	template <typename atomicXD>
+	void free_node(atomicXD *ptr)noexcept {
+		ptr->~atomicXD();
+		free(ptr);
+	}
+
 }
 
 template <typename _Ty>
-class LockFreeLinkedList final {
+class LockFreeLinkedList final {//测试OK之后把m_head改成非原子，因为理论上来说应该是可以非原子
 public:
 	using value_type = _Ty;
 	using size_type = DC::size_t;
+
+private:
+	using node_type = LockFreeLinkedListSpace::node<_Ty>;
 
 public:
 	LockFreeLinkedList() :m_head(nullptr) {
 		//debug
 		/*
-		m_head.store(new LockFreeLinkedListSpace::node<value_type>);
+		m_head.store(LockFreeLinkedListSpace::make_node<node_type>("9710"));
 		for (int i = 0; i < 3; i++) {
 			LockFreeLinkedListSpace::node<value_type>* it = m_head.load();
 			while (1) {
 				if (it->load_next() == nullptr) {
-					it->store_next(new LockFreeLinkedListSpace::node<value_type>(DC::STR::toString(i + 1)));
+					it->store_next(LockFreeLinkedListSpace::make_node<node_type>(DC::STR::toString(i + 1)));
 					break;
 				}
 				it = it->load_next();
-			 }
+			}
 		}
 		*/
 	}
 
-	~LockFreeLinkedList() {
+	~LockFreeLinkedList()noexcept {
 		clear();
 	}
 
 public:
-	void insert(const value_type&) {}
+	template <typename object_t>
+	void insert(object_t&& obj) {//将对象副本插入链表
+		static_assert(std::is_same<value_type, typename std::decay<object_t>::type>::value, "input type should be value_type");
+
+		auto new_node = LockFreeLinkedListSpace::make_node<node_type>(std::forward<object_t>(obj));
+		if (new_node == nullptr)
+			throw DC::Exception("LockFreeLinkedList::insert", "can not make node");
+
+		put_into_head(new_node);
+	}
 
 	template <typename ...ARGS>
-	void emplace(ARGS&& ...args) {}
+	void emplace(ARGS&& ...args) {
+		auto new_node = LockFreeLinkedListSpace::make_node<node_type>(std::forward<ARGS>(args)...);
+		if (new_node == nullptr)
+			throw DC::Exception("LockFreeLinkedList::insert", "can not make node");
+
+		put_into_head(new_node);
+	}
 
 	bool erase(const value_type&) {}
 
-	void clear() {//清空所有内存，在此期间不能对对象做其他操作，否则会导致未定义行为
-		LockFreeLinkedListSpace::node<value_type>* it = LockFreeLinkedListSpace::load_acquire(m_head);
+	void clear()noexcept {//清空所有内存，在此期间不能对对象做其他操作，否则会导致未定义行为
+		node_type* it = LockFreeLinkedListSpace::load_acquire(m_head);
 
 		while (it != nullptr) {
 			auto temp = it->load_next();
-			delete it;
+			LockFreeLinkedListSpace::free_node(it);
 			it = temp;
 		}
 	}
@@ -139,7 +181,7 @@ public:
 
 private:
 	template <typename _Pr>
-	LockFreeLinkedListSpace::node<value_type>* internal_find(const _Pr& _Pred)noexcept {
+	node_type* internal_find(const _Pr& _Pred)noexcept {
 		if (LockFreeLinkedListSpace::load_acquire(m_head) == nullptr)
 			return nullptr;
 
@@ -149,8 +191,24 @@ private:
 		return nullptr;
 	}
 
+	void put_into_head(node_type *ptr)noexcept {//把一个已经构造的节点设为头结点
+		std::lock_guard<SpinLock> head_locker(m_head_lock);//拿头指针修改锁
+		auto head_ptr = LockFreeLinkedListSpace::load_acquire(m_head);
+		if (head_ptr == nullptr) {
+			//头结点当前为空，特殊处理
+			put_into_head_empty_handle(head_ptr);
+			return;
+		}
+		//头结点当前非空，正常处理
+		//std::lock_guard<SpinLock> node_locker(head_ptr->sl);//锁当前头节点的锁
+	}
+
+	void put_into_head_empty_handle(node_type *ptr) {//不加锁的
+
+	}
+
 private:
-	std::atomic<LockFreeLinkedListSpace::node<value_type>*> m_head;
+	std::atomic<node_type*> m_head;
 	SpinLock m_head_lock;
 };
 
