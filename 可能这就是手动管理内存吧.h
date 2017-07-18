@@ -157,11 +157,14 @@ public:
 		auto node = this->is_inside_and_get_node(item);
 		if (node == nullptr) return false;
 
-		//auto item_ptr = &item;
-		//auto temp_head = LockFreeLinkedListSpace::load_acquire(m_head);
-		//if (item_ptr == temp_head || item_ptr == temp_head->load_next())
-		erase_head(node);
-		//)
+		auto temp_head = LockFreeLinkedListSpace::load_acquire(m_head);
+		if (node == temp_head || node == temp_head->load_next()) {
+			erase_head(node);
+		}
+		else {
+			if (!erase_normal(node))
+				erase_head(node);
+		}
 
 		return true;
 	}
@@ -169,8 +172,7 @@ public:
 	inline bool erase_head_test() {
 		auto ptr = LockFreeLinkedListSpace::load_acquire(m_head);
 		if (ptr == nullptr) return false;
-		erase(*ptr->object);
-		return true;
+		return erase(*ptr->object);
 	}
 
 	inline void erase_second_test() {
