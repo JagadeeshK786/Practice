@@ -94,6 +94,7 @@ namespace LockFreeLinkedListSpace {
 
 	template <typename atomicXD>
 	void free_node(atomicXD *ptr)noexcept {
+		//if (ptr == nullptr) return;
 		ptr->~atomicXD();
 		free(ptr);
 	}
@@ -152,7 +153,46 @@ public:
 		put_into_head(new_node);
 	}
 
-	bool erase(const value_type&) {}
+	bool erase(const value_type& item) {
+		auto node = this->is_inside_and_get_node(item);
+		if (node == nullptr) return false;
+
+		//auto item_ptr = &item;
+		//auto temp_head = LockFreeLinkedListSpace::load_acquire(m_head);
+		//if (item_ptr == temp_head || item_ptr == temp_head->load_next())
+		erase_head(node);
+		//)
+
+		return true;
+	}
+
+	inline bool erase_head_test() {
+		auto ptr = LockFreeLinkedListSpace::load_acquire(m_head);
+		if (ptr == nullptr) return false;
+		erase(*ptr->object);
+		return true;
+	}
+
+	inline void erase_second_test() {
+		auto ptr = LockFreeLinkedListSpace::load_acquire(m_head);
+		if (ptr == nullptr) return;
+		ptr = ptr->load_next();
+		if (ptr == nullptr) return;
+		erase(*ptr->object);
+	}
+
+	inline bool is_inside(const value_type& item)const {
+		if (&item == nullptr) return false;
+		bool rv = false;
+		this->traverse([&rv](const value_type& it) {
+			if (&it == &item) {
+				rv = true;
+				return true;
+			}
+			return false;
+		});
+		return rv;
+	}
 
 	void clear()noexcept {//清空所有内存，在此期间不能对对象做其他操作，否则会导致未定义行为
 		node_type* it = LockFreeLinkedListSpace::load_acquire(m_head);
@@ -178,37 +218,100 @@ public:
 	}
 
 	template <typename _Pr>
-	void traverse(const _Pr& _Pred) {//传入可调用对象，traverse函数将会遍历所有节点并以节点储存的对象作为参数来调用可调用对象。
-										//可调用对象返回值将会被忽略
+	void traverse(const _Pr& _Pred)noexcept {//传入可调用对象，traverse函数将会遍历所有节点并以节点储存的对象作为参数来调用可调用对象。
+										//可调用对象返回true时停止遍历，否则继续
 		for (LockFreeLinkedListSpace::node<value_type>* ptr(LockFreeLinkedListSpace::load_acquire(m_head)); ptr != nullptr; ptr = ptr->load_next())
-			_Pred(*ptr->object);
+			if (_Pred(*ptr->object)) break;
 	}
 
 private:
-	template <typename _Pr>
-	node_type* internal_find(const _Pr& _Pred)noexcept {
-		if (LockFreeLinkedListSpace::load_acquire(m_head) == nullptr)
-			return nullptr;
-
-		for (LockFreeLinkedListSpace::node<value_type>* ptr(LockFreeLinkedListSpace::load_acquire(m_head)); ptr == nullptr; ptr = ptr->load_next())
-			if (_Pred(ptr)) return ptr;
-
-		return nullptr;
+	inline node_type* is_inside_and_get_node(const value_type& item) {
+		if (&item == nullptr) return nullptr;
+		node_type* rv = nullptr;
+		this->node_traverse([&rv, &item](node_type* it) {
+			if (it->object == &item) {
+				rv = it;
+				return true;
+			}
+			return false;
+		});
+		return rv;
 	}
 
-	void put_into_head(node_type *ptr)noexcept {//把一个已经构造的节点设为头结点
+	template <typename _Pr>
+	void node_traverse(const _Pr& _Pred)noexcept {
+		for (LockFreeLinkedListSpace::node<value_type>* ptr(LockFreeLinkedListSpace::load_acquire(m_head)); ptr != nullptr; ptr = ptr->load_next())
+			if (_Pred(ptr)) break;
+	}
+
+	node_type* get_front(node_type* ptr)noexcept {//获得一个节点的前一个节点，此节点必须有效并且不是头节点。如果ptr是头节点，将会返回nullptr。
+		node_type *rv = LockFreeLinkedListSpace::load_acquire(m_head);
+		if (ptr == rv) return rv;//如果ptr是头节点，返回nullptr
+		this->node_traverse([&rv, &ptr](node_type* it) {
+			if (it == ptr) return true;
+			rv = it;
+			return false;
+		});
+		return rv;
+	}
+
+	inline bool is_next(node_type* ptr, node_type* ptr2) {//判断ptr2的前一个节点是否是ptr
+		return ptr->load_next() == ptr2;
+	}
+
+	void put_into_head(node_type *ptr)noexcept {//把一个已经构造的节点设为头节点
 		std::lock_guard<SpinLock> head_locker(m_head_lock);//拿头指针修改锁
 		if (LockFreeLinkedListSpace::load_acquire(m_head) == nullptr) {
-			//头结点当前为空
+			//头节点当前为空
 			LockFreeLinkedListSpace::store_release(m_head, ptr);
 			return;
 		}
-		//头结点当前非空
-		std::lock_guard<SpinLock> node_locker(LockFreeLinkedListSpace::load_acquire(m_head)->sl);//锁当前头节点的锁
+		//头节点当前非空
+		//std::lock_guard<SpinLock> node_locker(LockFreeLinkedListSpace::load_acquire(m_head)->sl);//锁当前头节点的锁
 		ptr->store_next(LockFreeLinkedListSpace::load_acquire(m_head));
 		LockFreeLinkedListSpace::store_release(m_head, ptr);
 	}
+	
+	void erase_head(node_type *ptr)noexcept {//通过本函数删除第一个node或第二个node
+		std::lock_guard<SpinLock> head_locker(m_head_lock);//拿头指针修改锁
 
+		//检查是否还是头节点
+		if (ptr == LockFreeLinkedListSpace::load_acquire(m_head)) {//还是头节点
+			std::lock_guard<SpinLock> node_locker(ptr->sl);
+			//auto freethis = LockFreeLinkedListSpace::load_acquire(m_head);
+			LockFreeLinkedListSpace::store_release(m_head, ptr->load_next());//将头结点设为老节点的下一个节点
+			LockFreeLinkedListSpace::free_node(ptr);
+		}
+		else {//不是头节点了
+			erase_normal(ptr);
+		}
+	}
+
+	bool erase_normal(node_type *ptr) {//false说明该节点是头结点或者该节点是第二个节点
+		std::unique_lock<SpinLock> node_locker(ptr->sl);//锁上ptr
+		std::unique_lock<SpinLock> node_locker2;
+
+		node_type* front = this->get_front(ptr);
+		while (true) {
+			if (front == nullptr) return false;
+			std::unique_lock<SpinLock> node_locker_temp(front->sl);
+			if (front == LockFreeLinkedListSpace::load_acquire(m_head)) return false;
+			if (this->is_next(front, ptr)) {//确定关系有效
+				node_locker2 = std::move(node_locker_temp);
+				break;
+			}
+			//关系无效，重新获取前一个node
+			front = this->get_front(ptr);
+		}
+
+		//到这里就已经拿到了两个锁了（并且确认了前后关系）
+		front->store_next(ptr->load_next());//前一个节点的next=ptr的next
+		node_locker2.unlock();//此时ptr事实上已经从链表移除了，所以可以解锁前一个节点了
+
+		LockFreeLinkedListSpace::free_node(ptr);
+		return true;
+	}
+	
 private:
 	std::atomic<node_type*> m_head;
 	SpinLock m_head_lock;
