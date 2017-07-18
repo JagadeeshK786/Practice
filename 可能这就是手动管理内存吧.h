@@ -85,7 +85,8 @@ public:
 public:
 	LockFreeLinkedList() :m_head(nullptr) {
 		//debug
-		m_head.store(new LockFreeLinkedListSpace::node<value_type>("9710"));
+		/*
+		m_head.store(new LockFreeLinkedListSpace::node<value_type>);
 		for (int i = 0; i < 3; i++) {
 			LockFreeLinkedListSpace::node<value_type>* it = m_head.load();
 			while (1) {
@@ -96,6 +97,7 @@ public:
 				it = it->load_next();
 			 }
 		}
+		*/
 	}
 
 	~LockFreeLinkedList() {
@@ -110,12 +112,20 @@ public:
 
 	bool erase(const value_type&) {}
 
-	void clear() {
+	void clear() {//清空所有内存，在此期间不能对对象做其他操作，否则会导致未定义行为
+		LockFreeLinkedListSpace::node<value_type>* it = LockFreeLinkedListSpace::load_acquire(m_head);
 
+		while (it != nullptr) {
+			auto temp = it->load_next();
+			delete it;
+			it = temp;
+		}
 	}
 
 	template <typename _Pr>
-	value_type& find(const _Pr& _Pred) {//_Pr是一个可调用对象，应该接受_Pr(const value_type&)方式的调用，如果找到了，返回true，否则返回false
+	value_type& find(const _Pr& _Pred) {//传入可调用对象，find函数将会遍历所有节点并以节点储存的对象作为参数来调用可调用对象。
+		                                                       //可调用对象返回false，意味着继续遍历；可调用对象返回true，则find函数将返回这个对象的引用；
+		                                                       //如果没有找到对象，将会抛出DC::Exception异常。
 		if (LockFreeLinkedListSpace::load_acquire(m_head) == nullptr)
 			throw DC::Exception("LockFreeLinkedList::find", "object not found");
 
@@ -133,10 +143,8 @@ private:
 		if (LockFreeLinkedListSpace::load_acquire(m_head) == nullptr)
 			return nullptr;
 
-		for (LockFreeLinkedListSpace::node<value_type>* ptr(LockFreeLinkedListSpace::load_acquire(m_head)); ; ptr = ptr->load_next()) {
+		for (LockFreeLinkedListSpace::node<value_type>* ptr(LockFreeLinkedListSpace::load_acquire(m_head)); ptr == nullptr; ptr = ptr->load_next())
 			if (_Pred(ptr)) return ptr;
-			if (ptr->load_next() == nullptr) break;
-		}
 
 		return nullptr;
 	}
