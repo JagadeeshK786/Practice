@@ -134,7 +134,7 @@ public:
 
 public:
 	template <typename object_t>
-	void insert(object_t&& obj) {//将对象副本插入链表
+	value_type& insert(object_t&& obj) {//将对象副本插入链表
 		static_assert(std::is_same<value_type, typename std::decay<object_t>::type>::value, "input type should be value_type");
 
 		auto new_node = LockFreeLinkedListSpace::make_node<node_type>(std::forward<object_t>(obj));
@@ -142,15 +142,17 @@ public:
 			throw DC::Exception("LockFreeLinkedList::insert", "can not make node");
 
 		put_into_head(new_node);
+		return *(new_node->object);
 	}
 
 	template <typename ...ARGS>
-	void emplace(ARGS&& ...args) {
+	value_type& emplace(ARGS&& ...args) {
 		auto new_node = LockFreeLinkedListSpace::make_node<node_type>(std::forward<ARGS>(args)...);
 		if (new_node == nullptr)
 			throw DC::Exception("LockFreeLinkedList::insert", "can not make node");
 
 		put_into_head(new_node);
+		return *(new_node->object);
 	}
 
 	bool erase(const value_type& item) {
@@ -169,21 +171,7 @@ public:
 		return true;
 	}
 
-	inline bool erase_head_test() {
-		auto ptr = LockFreeLinkedListSpace::load_acquire(m_head);
-		if (ptr == nullptr) return false;
-		return erase(*ptr->object);
-	}
-
-	inline void erase_second_test() {
-		auto ptr = LockFreeLinkedListSpace::load_acquire(m_head);
-		if (ptr == nullptr) return;
-		ptr = ptr->load_next();
-		if (ptr == nullptr) return;
-		erase(*ptr->object);
-	}
-
-	inline bool is_inside(const value_type& item)const {
+	inline bool is_inside(const value_type& item) {
 		if (&item == nullptr) return false;
 		bool rv = false;
 		this->traverse([&rv](const value_type& it) {
@@ -269,7 +257,7 @@ private:
 			return;
 		}
 		//头节点当前非空
-		//std::lock_guard<SpinLock> node_locker(LockFreeLinkedListSpace::load_acquire(m_head)->sl);//锁当前头节点的锁
+		std::lock_guard<SpinLock> node_locker(LockFreeLinkedListSpace::load_acquire(m_head)->sl);//锁当前头节点的锁
 		ptr->store_next(LockFreeLinkedListSpace::load_acquire(m_head));
 		LockFreeLinkedListSpace::store_release(m_head, ptr);
 	}
