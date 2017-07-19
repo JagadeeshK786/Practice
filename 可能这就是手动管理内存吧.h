@@ -362,11 +362,19 @@ public:
 	}
 
 	template <typename ...ARGS>
-	pointer allocate_construct(const size_t& num, ARGS&& ...args) {//此方法可确保分配的内存在被traverse之前就已经在其上构造过了对象
+	pointer allocate_construct(const size_t& num, ARGS&& ...args)noexcept {//此方法可确保分配的内存在被traverse之前就已经在其上构造过了对象
 																										   //此方法包含异常安全保证，如果你的构造函数抛了异常（将返回nullptr），也不会导致内存泄露
 		if (num < 1) return nullptr;
 		auto ptr = reinterpret_cast<value_type*>(malloc(num * sizeof(value_type)));
 		if (ptr == NULL) return nullptr;
+
+		/*debug
+		value_type& ptr0 = ptr[0];
+		value_type& ptr1 = ptr[1];
+		value_type& ptr2 = ptr[2];
+		value_type& ptr3 = ptr[3];
+		value_type& ptr4 = ptr[4];
+		//*/
 
 		size_t constructed = 0;
 
@@ -375,8 +383,11 @@ public:
 				new(&ptr[i]) value_type(std::forward<ARGS>(args)...);
 		}
 		catch (...) {//某一个构造失败，现在把之前构造的全部析构，然后删掉内存
-			for (size_t i = 0; i < constructed; i++)
-				ptr[i].~value_type();
+			try {
+				for (size_t i = 0; i < constructed + 1; i++)
+					ptr[i].~value_type();
+			}
+			catch (...) {}//防止析构函数也抛异常
 			free(ptr);
 			return nullptr;
 		}
