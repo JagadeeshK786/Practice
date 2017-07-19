@@ -114,18 +114,18 @@ public:
 	LockFreeLinkedList() :m_head(nullptr) {
 		//debug
 		/*
-		m_head.store(LockFreeLinkedListSpace::make_node<node_type>("9710"));
+		m_head.store(LockFreeLinkedListSpace::make_node<node_type>(malloc(sizeof(test))));
 		for (int i = 0; i < 3; i++) {
 			LockFreeLinkedListSpace::node<value_type>* it = m_head.load();
 			while (1) {
 				if (it->load_next() == nullptr) {
-					it->store_next(LockFreeLinkedListSpace::make_node<node_type>(DC::STR::toString(i + 1)));
+					it->store_next(LockFreeLinkedListSpace::make_node<node_type>(malloc(sizeof(test))));
 					break;
 				}
 				it = it->load_next();
 			}
 		}
-		*/
+		//*/
 	}
 
 	~LockFreeLinkedList()noexcept {
@@ -164,7 +164,7 @@ public:
 			erase_head(node);
 		}
 		else {
-			if (!erase_normal(node))
+			if (!erase_normal(node, false))
 				erase_head(node);
 		}
 
@@ -192,6 +192,12 @@ public:
 			LockFreeLinkedListSpace::free_node(it);
 			it = temp;
 		}
+
+		LockFreeLinkedListSpace::store_release(m_head, nullptr);
+	}
+
+	bool empty() {
+		return LockFreeLinkedListSpace::load_acquire(m_head) == nullptr;
 	}
 
 	template <typename _Pr>
@@ -267,17 +273,19 @@ private:
 
 		//检查是否还是头节点
 		if (ptr == LockFreeLinkedListSpace::load_acquire(m_head)) {//还是头节点
-			std::lock_guard<SpinLock> node_locker(ptr->sl);
+			//std::lock_guard<SpinLock> node_locker(ptr->sl);
+			ptr->sl.lock();//使用这个删，因为删完之后不需要unlock(这片内存已经被回收了)
 			//auto freethis = LockFreeLinkedListSpace::load_acquire(m_head);
 			LockFreeLinkedListSpace::store_release(m_head, ptr->load_next());//将头结点设为老节点的下一个节点
 			LockFreeLinkedListSpace::free_node(ptr);
 		}
 		else {//不是头节点了
-			erase_normal(ptr);
+			erase_normal(ptr, true);
 		}
 	}
 
-	bool erase_normal(node_type *ptr) {//false说明该节点是头结点或者该节点是第二个节点
+	bool erase_normal(node_type *ptr, bool secondok) {//return false说明该节点是头结点或者该节点是第二个节点
+																					   //第二个参数是true的话就允许这是一个第二个节点，可以正常删除
 		std::unique_lock<SpinLock> node_locker(ptr->sl);//锁上ptr
 		std::unique_lock<SpinLock> node_locker2;
 
@@ -285,11 +293,12 @@ private:
 		while (true) {
 			if (front == nullptr) return false;
 			std::unique_lock<SpinLock> node_locker_temp(front->sl);
-			if (front == LockFreeLinkedListSpace::load_acquire(m_head)) return false;
+			if ((!secondok) && front == LockFreeLinkedListSpace::load_acquire(m_head)) return false;
 			if (this->is_next(front, ptr)) {//确定关系有效
 				node_locker2 = std::move(node_locker_temp);
 				break;
 			}
+			node_locker_temp.unlock();
 			//关系无效，重新获取前一个node
 			front = this->get_front(ptr);
 		}
@@ -310,30 +319,24 @@ private:
 template <typename _Ty>
 class MemoryPool final {
 	/*
+	应该改叫memorylist
 	这是一个线程安全的内存池。
 	1.线程安全保证
 	2.RAII保证
-	3.支持自定义删除器
+
+	行为
+	1.alloc
 
 	接口(详见http://zh.cppreference.com/w/cpp/concept/Allocator)
 	allocate(size_t)分配可以容纳size_t个value_type对象
 	allocate(size_t,pointer)
 	deallocate(pointer,size_t)
 	construct(pointer,args)
-	destory(pointer) 注意，这个默认是调用构造函数，但是如果是有deleter的话，那就用deleter来删除
+	destory(pointer) 注意，这个默认是调用析构函数，但是如果是有deleter的话，那就用deleter来删除
 	max_size()
 	operator==()
 	operator!=()
-	shrink_to_fit() 删掉未使用的内存，这个
-
-	实现
-	1.内存块(一片可容纳value_type对象的内存)使用单向链表管理，一个节点包含一个ptr、一个bool值以及两个std::automic<bool>，此bool值指示该节点的ptr是否已被分配，第一个std::automic<bool>标识是否可以在此时对该节点进行修改，第二个std::automic<bool>则标识此节点是否正在被删除
-	2.allocate时，在尾部增加一个节点，然后返回该节点指向的内存
-	3.需要修改一个节点时，首先锁上该节点的std::automic<bool>，然后对该节点进行修改
-	4.需要在一个位置上删除节点时，
-	5.不允许在一个链表中插入一个节点
-
-	之所以使用自旋+std::automic<bool>而不是互斥量，出于两个考虑，1.std::mutex占用空间太大，不划算；2.根据https://www.zhihu.com/question/38857029/answer/78480263，在等待时间短的情况下，自旋的性能比互斥量更好；
+	shrink_to_fit() 删掉未使用的内存
 	*/
 public:
 	using value_type = _Ty;
@@ -345,5 +348,75 @@ private:
 	using size_t = DC::size_t;
 
 public:
+	~MemoryPool() {
+		clear();
+	}
+
+public:
+	pointer allocate(const size_t& num) {
+		if (num < 1) return nullptr;
+		auto ptr = malloc(num * sizeof(value_type));
+		if (ptr == NULL) return nullptr;
+
+		return reinterpret_cast<value_type*>(m_list.insert(ptr));
+	}
+
+	template <typename ...ARGS>
+	pointer allocate_construct(const size_t& num, ARGS&& ...args) {//此方法可确保分配的内存在被traverse之前就已经在其上构造过了对象
+																										   //此方法包含异常安全保证，如果你的构造函数抛了异常（将返回nullptr），也不会导致内存泄露
+		if (num < 1) return nullptr;
+		auto ptr = reinterpret_cast<value_type*>(malloc(num * sizeof(value_type)));
+		if (ptr == NULL) return nullptr;
+
+		size_t constructed = 0;
+
+		try {
+			for (size_t i = 0; i < num; i++, constructed++)
+				new(&ptr[i]) value_type(std::forward<ARGS>(args)...);
+		}
+		catch (...) {//某一个构造失败，现在把之前构造的全部析构，然后删掉内存
+			for (size_t i = 0; i < constructed; i++)
+				ptr[i].~value_type();
+			free(ptr);
+			return nullptr;
+		}
+
+		return reinterpret_cast<value_type*>(m_list.insert(reinterpret_cast<void*>(ptr)));
+	}
+
+	inline void deallocate(pointer ptr, const size_t&) {
+		auto& fuck_this = m_list.find([&ptr](const void* it) {
+			if (it == ptr) 
+				return true;
+			return false;
+		});
+		//获取object指针在m_list中的引用
+		free(ptr);
+		m_list.erase(fuck_this);
+	}
+
+	inline void clear() {//调用前请确认所有对象都已经析构
+		m_list.traverse([](void*& it) {
+			free(it);
+			it = nullptr;
+			return false;
+		});
+		m_list.clear();		
+	}
+
+	inline bool empty() {
+		return m_list.empty();
+	}
+
+	template <typename _Pr>
+	inline void traverse(const _Pr& _Pred)noexcept {//传入可调用对象，traverse函数将会遍历所有节点并以节点储存的对象作为参数来调用可调用对象。
+											                                     //可调用对象返回true时停止遍历，否则继续
+		                                                                         //注意，由于这个类是不管你内存区域是否构造了对象的，所以本函数可能会拿到一些未构造的对象。用户在编写本函数的参数函数时应该考虑到此因素。
+		m_list.traverse([&_Pred](void* ptr) {
+			return _Pred(reinterpret_cast<pointer>(ptr));
+		});
+	}
+
 private:
+	LockFreeLinkedList<void*> m_list;
 };
