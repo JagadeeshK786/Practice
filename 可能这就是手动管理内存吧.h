@@ -54,9 +54,25 @@ public:
 		return ptr;
 	}
 
-	inline bool put(const value_type& obj)noexcept {
+	template <typename ...ARGS>
+	static pointer make_norecord(ARGS&& ...args)noexcept {
+		auto ptr = reinterpret_cast<pointer>(malloc(sizeof(value_type)));
+		if (ptr == NULL)
+			return nullptr;
+
 		try {
-			return m_list.push(obj);
+			new(ptr) value_type(std::forward<ARGS>(args)...);
+		}
+		catch (...) {
+			free(ptr);
+			ptr = nullptr;
+		}
+		return ptr;
+	}
+
+	inline bool put(value_type& obj)noexcept {
+		try {
+			return m_list.push(&obj);
 		}
 		catch (...) {
 			return false;
@@ -64,35 +80,32 @@ public:
 	}
 
 	template <typename Functor>
-	bool remove_if(const Functor& _Pred)noexcept {//deconstruct and deallocate the back item in the queue, if _Pred return true.
-												  //otherwise push the item(already popped) back to queue.
-												  //_Pred should not throw exception
-												  //if _Pred has been executed, return true, otherwise return false
+	void remove_if(const DC::size_t& timelimit, const Functor& _Pred)noexcept {//_Pred返回1删除，_Pred返回2不删除，_Pred返回3停止。timelimit到了也会停止。_Pred不能抛异常。
 		pointer ptr = nullptr;
-		if (!m_list.pop(ptr))
-			return false;
+		DC::timer timer;
+		timer.reset();
+		timer.start();
+		while (true) {
+			if (!m_list.pop(ptr))
+				return;
 
-		bool PredRv;
-		try {
-			PredRv = _Pred(*ptr);
-		}
-		catch (...) {
-			if (!m_list.push(ptr))
+			if (timer.getms() >= timelimit)
+				return;
+
+			switch (_Pred(*ptr)) {
+			case 1: {//删除
 				destory(ptr);
-			return true;
-		}
-
-		try {
-			if (!PredRv) {
+				continue;
+			}break;
+			case 2: {//下一个
 				if (!m_list.push(ptr))
 					destory(ptr);
+			}break;
+			case 3: {//立刻退出
+				return;
+			}break;
 			}
-			else
-				destory(ptr);
 		}
-		catch (...) {}
-
-		return true;
 	}
 
 	void clear()noexcept {//not thread-safe		 
@@ -109,9 +122,8 @@ public:
 		return m_list.empty();
 	}
 
-private:
-	inline void destory(pointer ptr) {
-		ptr->~value_type();
+	inline void destory(void* ptr) {
+		reinterpret_cast<pointer>(ptr)->~value_type();
 		free(ptr);
 	}
 
