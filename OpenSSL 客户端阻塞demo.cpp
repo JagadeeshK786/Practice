@@ -44,11 +44,11 @@ int main() {
 	//_getch();
 	char buffer[8096] = { 0 };
 	DC::Web::http::request req;
-	req.setHTTPVersion(1.1);
-	req.Method() = DC::Web::http::methods::GET;
-	req.URI() = "/";
-	req.Headers().add(DC::Web::http::addHeader("Host", "liuziangexit.com"));
-	DC::Web::http::add_ContentLength(req);
+	req.set_version(1.1);
+	req.set_method(DC::Web::http::methods::GET);
+	req.set_uri("/");
+	req.headers().add(DC::Web::http::add_header("Host", "liuziangexit.com"));
+	req.headers().add(DC::Web::http::add_header("Content-Length", DC::STR::toString(0)));
 	auto sendthis(req.toStr());
 	BIO_write(bio, sendthis.c_str(), sendthis.size());
 	auto look = BIO_read(bio, buffer, 8096);
