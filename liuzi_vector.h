@@ -33,8 +33,8 @@ namespace DC {
 			m_capacity = list.size();
 
 			size_type index = 0;
-			for (auto&& it : list) {
-				new(&m_array[index]) value_type(std::forward<decltype(it)>(it));
+			for (const auto& it : list) {
+				new(&m_array[index]) value_type(it);
 				index++;
 			}
 
