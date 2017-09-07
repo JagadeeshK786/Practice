@@ -11,9 +11,9 @@ namespace DC {
 		using value_type = _Ty;
 
 	public:
-		vector() :m_array(nullptr), m_size(0), m_capacity(0) {}
+		constexpr vector() {}
 
-		vector(const size_type& reserve_size) :m_array(nullptr), m_size(0), m_capacity(0) {
+		vector(const size_type& reserve_size) {
 			void* mem = malloc(sizeof(value_type)*reserve_size);
 
 			if (mem == 0)
@@ -23,7 +23,7 @@ namespace DC {
 			m_capacity = reserve_size;
 		}
 
-		vector(const std::initializer_list<value_type>& list) :m_array(nullptr), m_size(0), m_capacity(0) {
+		vector(const std::initializer_list<value_type>& list) {
 			void* mem = malloc(sizeof(value_type)*list.size());
 
 			if (mem == 0)
@@ -52,7 +52,11 @@ namespace DC {
 		}
 
 	public:
-		void reserve(const size_type& new_cap) {}
+		void reserve(const size_type& new_cap) {
+			if (new_cap == m_capacity)
+				return;
+
+		}
 
 		void resize() {}
 
@@ -66,9 +70,17 @@ namespace DC {
 
 		void end() {}
 
+		constexpr size_type size()const {
+			return m_size;
+		}
+
+		constexpr size_type capacity()const {
+			return m_capacity;
+		}
+
 	private:
-		_Ty* m_array;
-		size_type m_size, m_capacity;
+		_Ty* m_array{ nullptr };
+		size_type m_size{ 0 }, m_capacity{ 0 };
 	};
 
 }
