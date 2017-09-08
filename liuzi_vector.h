@@ -53,16 +53,108 @@ namespace DC {
 
 	public:
 		void reserve(const size_type& new_cap) {
-			if (new_cap == m_capacity)
+			if (new_cap <= m_capacity)
 				return;
 
+			value_type* mem = reinterpret_cast<value_type*>(malloc(sizeof(value_type)*new_cap));
+
+			if (mem == 0)
+				throw std::bad_alloc();
+
+			for (size_type i = 0; i < this->m_size; i++) {
+				new(&mem[i]) value_type(std::move(this->m_array[i]));
+				this->m_array[i].~value_type();
+			}
+
+			free(this->m_array);
+
+			this->m_array = mem;
+			this->m_capacity = new_cap;
 		}
 
-		void resize() {}
+		void resize(const size_type& new_size) {
+			if (new_size == this->m_size)
+				return;
 
-		void push_back() {}
+			if (new_size > this->m_size) {
+				if (new_size > this->m_capacity)
+					this->reserve(new_size);
 
-		void emplace_back() {}
+				for (size_type i = this->m_size; i < new_size; i++)
+					new(&this->m_array[i]) value_type();
+
+				this->m_size = new_size;
+
+				return;
+			}
+
+			if (new_size < this->m_size) {
+				if (new_size == 0) {
+					for (size_type i = 0; i < this->m_size; i++)
+						this->m_array[i].~value_type();
+				}
+				else {
+					for (size_type i = this->m_size - 1; i >= new_size; i--)
+						this->m_array[i].~value_type();
+				}
+
+				this->m_size = new_size;
+
+				return;
+			}
+		}
+
+		void resize(const size_type& new_size, const value_type& val) {
+			if (new_size == this->m_size)
+				return;
+
+			if (new_size > this->m_size) {
+				if (new_size > this->m_capacity)
+					this->reserve(new_size);
+
+				for (size_type i = this->m_size; i < new_size; i++)
+					new(&this->m_array[i]) value_type(val);
+
+				this->m_size = new_size;
+
+				return;
+			}
+
+			if (new_size < this->m_size) {
+				if (new_size == 0) {
+					for (size_type i = 0; i < this->m_size; i++)
+						this->m_array[i].~value_type();
+				}
+				else {
+					for (size_type i = this->m_size - 1; i >= new_size; i--)
+						this->m_array[i].~value_type();
+				}
+
+				this->m_size = new_size;
+
+				return;
+			}
+		}
+
+		template <typename ValueType>
+		void push_back(ValueType&& val) {
+			if (this->m_size == this->m_capacity)
+				this->reserve(this->m_capacity * 2);
+
+			new(&this->m_array[this->m_size]) value_type(std::forward<ValueType>(val));
+
+			this->m_size++;
+		}
+
+		template <typename ...ARGS>
+		void emplace_back(ARGS&& ...args) {
+			if (this->m_size == this->m_capacity)
+				this->reserve(this->m_capacity * 2);
+
+			new(&this->m_array[this->m_size]) value_type(args...);
+
+			this->m_size++;
+		}
 
 		void erase() {}
 
@@ -70,11 +162,11 @@ namespace DC {
 
 		void end() {}
 
-		constexpr size_type size()const {
+		constexpr size_type size()const noexcept {
 			return m_size;
 		}
 
-		constexpr size_type capacity()const {
+		constexpr size_type capacity()const noexcept {
 			return m_capacity;
 		}
 
