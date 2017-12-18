@@ -12,8 +12,6 @@
 
 #include <libexif/exif-data.h>
 
-void dosth() {}
-
 #define FILE_BYTE_ORDER EXIF_BYTE_ORDER_MOTOROLA
 
 static const unsigned int image_data_offset = 20;
@@ -89,7 +87,6 @@ bool write_exif(
 		std::unique_ptr<ExifData, std::function<void(ExifData*)>> exif(
 			exif_data_new(),
 			[](ExifData* p) {
-			dosth();
 			exif_data_unref(p);
 			//exif_data_free(p);
 		});
@@ -152,17 +149,45 @@ bool write_exif(
 		entry = init_tag(exif.get(), EXIF_IFD_0, EXIF_TAG_IMAGE_LENGTH);
 		exif_set_long(entry->data, FILE_BYTE_ORDER, ImageHeight);
 
-		entry = create_tag(exif.get(), EXIF_IFD_GPS, EXIF_TAG_LATITUDE, exif_format_get_size(EXIF_FORMAT_RATIONAL));
+		//此处使用PS或者其他软件查看经纬时发现数字不太对，不要慌张，这是正常的，是因为经纬度表示方式不一样，在此可以转换：http://www.gzhatu.com/du2dfm.html
+		entry = create_tag(exif.get(), EXIF_IFD_GPS, EXIF_TAG_LATITUDE, 24);
 		entry->format = EXIF_FORMAT_RATIONAL;
-		exif_set_rational(entry->data, FILE_BYTE_ORDER, { (ExifLong)(Latitude * 1000) ,(ExifLong)1000 });
+		entry->components = 3;
+		exif_set_rational(entry->data, FILE_BYTE_ORDER, { ((ExifLong)abs(Latitude * (double)1000000)), 1000000 });
 
-		entry = create_tag(exif.get(), EXIF_IFD_GPS, EXIF_TAG_LONGITUDE, exif_format_get_size(EXIF_FORMAT_RATIONAL));
+		entry = create_tag(exif.get(), EXIF_IFD_GPS, EXIF_TAG_LATITUDE_REF, 1);
+		entry->format = EXIF_FORMAT_ASCII;
+		if (Latitude >= 0)
+			memcpy(entry->data, "N", 1);
+		else
+			memcpy(entry->data, "S", 1);
+
+		entry = create_tag(exif.get(), EXIF_IFD_GPS, EXIF_TAG_LONGITUDE, 24);
 		entry->format = EXIF_FORMAT_RATIONAL;
-		exif_set_rational(entry->data, FILE_BYTE_ORDER, { (ExifLong)(Longitude * 1000) ,(ExifLong)1000 });
+		entry->components = 3;
+		exif_set_rational(entry->data, FILE_BYTE_ORDER, { ((ExifLong)abs(Longitude * (double)1000000)), 1000000 });
+
+		entry = create_tag(exif.get(), EXIF_IFD_GPS, EXIF_TAG_LONGITUDE_REF, 1);
+		entry->format = EXIF_FORMAT_ASCII;
+		if (Longitude >= 0)
+			memcpy(entry->data, "E", 1);
+		else
+			memcpy(entry->data, "W", 1);
 
 		entry = create_tag(exif.get(), EXIF_IFD_GPS, EXIF_TAG_ALTITUDE, exif_format_get_size(EXIF_FORMAT_RATIONAL));
 		entry->format = EXIF_FORMAT_RATIONAL;
-		exif_set_rational(entry->data, FILE_BYTE_ORDER, { (ExifLong)(Altitude * 1000) ,(ExifLong)1000 });
+		entry->components = 1;
+		exif_set_rational(entry->data, FILE_BYTE_ORDER, { (ExifLong)abs(Altitude * 10000) ,10000 });
+
+		entry = create_tag(exif.get(), EXIF_IFD_GPS, EXIF_TAG_ALTITUDE_REF, 1);
+		entry->format = EXIF_FORMAT_BYTE;
+		char temp = 0;
+		if (Altitude >= 0)
+			memcpy(entry->data, reinterpret_cast<const void*>(&temp), 1);
+		else {
+			temp = 1;
+			memcpy(entry->data, reinterpret_cast<const void*>(&temp), 1);
+		}
 
 		unsigned char *exif_data = nullptr;
 		unsigned int exif_data_len = 0;
@@ -191,9 +216,8 @@ int main(int argc, char **argv)
 	{
 		auto img = DC::File::read<DC::File::binary>("test.jpg");
 		std::string result;
-		write_exif(result, img, "2017:12:08 16:18:45", "HEIF Utility", "Apple", "iPhone SE 2 runs Android", "iPhone SE 2 back camera 3.99mm f/1.8", 3.99, 28, 0.004, 1.8, 50, 1, 1, 3024, 4032, 23.1541, 113.324, 8848, 0);
+		write_exif(result, img, "2017:12:08 16:18:45", "HEIF Utility", "Apple", "iPhone SE 2 runs Android", "iPhone SE 2 back camera 3.99mm f/1.8", 3.99, 28, 0.004, 1.8, 50, 1, 1, 3024, 4032, 22.5203, 113.94, -8848, 0);
 		DC::File::write<DC::File::binary>("out.jpg", result);
-		dosth();
 	}
 	_CrtDumpMemoryLeaks();
 }
