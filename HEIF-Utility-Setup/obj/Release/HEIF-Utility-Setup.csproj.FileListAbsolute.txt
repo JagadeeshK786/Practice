@@ -13,4 +13,3 @@ E:\OneDrive\Dev\Projects\HEIF-Utility-Setup\obj\Release\HEIF-Utility-Setup.exe
 E:\OneDrive\Dev\Projects\HEIF-Utility-Setup\obj\Release\HEIF-Utility-Setup.pdb
 E:\OneDrive\Dev\Projects\HEIF-Utility-Setup\obj\Release\HEIF_Utility_Setup.ShowLinkCopyable.resources
 E:\OneDrive\Dev\Projects\HEIF-Utility-Setup\obj\Release\HEIF_Utility_Setup.ChooseTPTempDir.resources
-E:\OneDrive\Dev\Projects\HEIF-Utility-Setup\obj\Release\HEIF-Utility-Setup.csprojResolveAssemblyReference.cache

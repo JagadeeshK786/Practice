@@ -38,10 +38,10 @@
             this.label1.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.label1.Location = new System.Drawing.Point(13, 11);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(412, 112);
+            this.label1.Size = new System.Drawing.Size(412, 155);
             this.label1.TabIndex = 6;
-            this.label1.Text = "HEIF Utility Thumbnail Provider (HUTP) 可以在 Windows 资源管理器显示 .heic 和 .heif 图像的略缩图。要" +
-    "启用 HUTP，请点击下面的按钮。如果您不想启用此功能，请点击“下一步”。\r\n\r\n此项需要管理员权限。";
+            this.label1.Text = "HEIF Utility Thumbnail Provider (HUTP) 可以在 Windows 文件资源管理器显示 .heic 和 .heif 图像的略缩图" +
+    "。要启用 HUTP，请点击下面的按钮。如果您不想启用此功能，请点击“下一步”。\r\n\r\n此项需要管理员权限。";
             // 
             // button1
             // 

@@ -12,7 +12,7 @@ namespace HEIF_Utility_Setup
 {
     public partial class MainWindow : Form
     {
-        private List<string> title_list = new List<string> { "欢迎", "检查系统信息", "检查VS15支持", "ThumbnailProvider", "完成" };
+        private List<string> title_list = new List<string> { "欢迎", "系统要求", "检查VS15", "ThumbnailProvider", "完成" };
         int now = 0;
 
         public MainWindow()
