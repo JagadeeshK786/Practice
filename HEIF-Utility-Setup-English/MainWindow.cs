@@ -95,7 +95,7 @@ namespace HEIF_Utility_Setup
                         var box = new Finish();
                         box.OnNav += new Finish.NavHandler(NavHandler);
                         new_ctrl = box;
-                        next.Text = "完成";
+                        next.Text = "Done";
                     }
                     break;
                 case 4:

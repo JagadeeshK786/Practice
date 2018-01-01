@@ -32,7 +32,7 @@ namespace HEIF_Utility_Setup
         {
             if (string.IsNullOrEmpty(folder))
             {
-                MessageBox.Show("您还没有选择目录", "");
+                MessageBox.Show("You have not selected a directory yet", "");
                 return;
             }
             this.Close();
