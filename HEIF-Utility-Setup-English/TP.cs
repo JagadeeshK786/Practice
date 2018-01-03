@@ -42,7 +42,7 @@ namespace HEIF_Utility_Setup
             try
             {
                 removeslash(path);
-                File.WriteAllText("HUTPWriteDirectory", path, Encoding.ASCII);
+                File.WriteAllText("conf/HUTPWriteDirectory", path, Encoding.ASCII);
 
                 System.Diagnostics.Process p = new System.Diagnostics.Process();
                 p.StartInfo.FileName = "RegSvr32";

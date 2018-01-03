@@ -29,3 +29,4 @@ E:\OneDrive\Dev\Projects\HEIF-Utility-Setup-English\obj\Release\HEIF_Utility_Set
 E:\OneDrive\Dev\Projects\HEIF-Utility-Setup-English\obj\Release\HEIF_Utility_Setup.TP.resources
 E:\OneDrive\Dev\Projects\HEIF-Utility-Setup-English\obj\Release\HEIF_Utility_Setup.Welcome.resources
 E:\OneDrive\Dev\Projects\HEIF-Utility-Setup-English\obj\Release\HEIF-Utility-Setup.csproj.GenerateResource.Cache
+E:\OneDrive\Dev\Projects\HEIF-Utility-Setup-English\obj\Release\HEIF-Utility-Setup.csprojResolveAssemblyReference.cache
