@@ -7,7 +7,7 @@ namespace ZeldaData
     class Util
     {
         static public string image_weapons_url = "https://starryedge.com/ZeldaPS/Data/Image/Weapons/",
-            page_weapons_url = "https://starryedge.com/ZeldaPS/Data/Page/Weapons/";
+             image_creatures_url = "https://starryedge.com/ZeldaPS/Data/Image/Creatures/";
 
         public static List<int> search_all(string str, string findme)
         {
@@ -57,7 +57,8 @@ namespace ZeldaData
                 it.ChineseName = p.Substring(search_time(p, " ", 2) + 1, p.IndexOf('!') - search_time(p, " ", 2) - 1);
                 rv.Add(it);
                 it.Number = p.Substring(p.IndexOf(' ') + 1, search_time(p, " ", 2) - p.IndexOf(' ') - 1);
-                it.Image = image_weapons_url + it.Number.Replace('/', '_') + ".png";
+                //it.Image = image_weapons_url + it.Number.Replace('/', '_') + ".png";
+                it.Image = image_creatures_url + it.Number.Replace('/', '_') + ".jpg";
                 //it.ChineseIntro = page_weapons_url + it.Number.Replace('/', '_');
                 it.Description = new description_type[1] { new description_type() };
                 it.Description[0].Language = "CN";
