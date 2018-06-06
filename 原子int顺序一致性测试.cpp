@@ -61,5 +61,6 @@ int main(){
             success_count++;
     timer.stop();
     
+    //你会发现99.9%的开销不是数值操作，而是创建线程。。
     cout<<success_count<<"\n"<<timer.getms()/1000<<"\n";
 }
