@@ -27,7 +27,9 @@ int test_without_launder(int* a, float* b) {
 
 int test_with_launder(int* a, float* b) {
     *a = 9710;
+    //*b = 2.0;
     *std::launder(b) = 2.0;
+    //return *a;
     return *std::launder(a);
 }
 
