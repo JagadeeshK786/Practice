@@ -1,10 +1,13 @@
 ﻿#include <iostream>
 
-struct X { const int n; };
-union U { X x; float f; };
+struct X {
+    const int n;
+    const double d;
+};
 
 int main() {
-	U u = { { 1 } }; //聚合初始化一个U，它的活跃成员是x，x.n为1
-	X *p = new (&u.x) X{ 9710 }; //在 u.x 的位置上重新构造一个 X
-	std::cout << u.x.n;
+    X* p = new X{7, 8.8};
+    X* new_p = new(p) X{9710, 6.6};
+    std::cout<< "old pointer:" << p->n << "  " << p->d << "\n";
+    std::cout<< "new pointer:" << new_p->n << "  " << new_p->d << "\n";
 }
