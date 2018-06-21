@@ -11,6 +11,6 @@ int main() {
 	int b = p->n;
 	int c = p->n;
 	double d = p->d;
-    std::cout<< "old pointer:" << p->n << "  " << p->d << "\n";
-    std::cout<< "new pointer:" << new_p->n << "  " << new_p->d << "\n";
+	std::cout<< "old pointer:" << p->n << "  " << p->d << "\n";
+	std::cout<< "new pointer:" << new_p->n << "  " << new_p->d << "\n";
 }
