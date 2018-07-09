@@ -1,0 +1,3 @@
+变量标识符和类型名不应该包含大写字母，使用下划线来分隔词汇。如singleton, liuzianglib_singleton
+模板参数的词汇以大写字母开头，应以大写的T结尾。如T, AllocatorT, PredT
+类内部成员变量应该以m_开头。如m_member, m_allocator
