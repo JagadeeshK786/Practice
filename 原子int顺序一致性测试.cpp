@@ -21,11 +21,16 @@ bool test_atomic(){
         //value.store(value.load(std::memory_order_acquire)+1,std::memory_order_release);
         
         //方法2-保证顺序一致性
-        //value.fetch_add(1);
+        //value.fetch_add(1,std::memory_order_relaxed);
+        //value.fetch_add(1,std::memory_order_acq_rel);
         
         //方法3-保证顺序一致性
+        //x86下ok但不通用
+        //int tmp=value.load(memory_order_relaxed);
+        //while(!value.compare_exchange_weak(tmp, tmp+1, std::memory_order_relaxed));
+        //通用
         //int tmp=value.load(memory_order_acquire);
-        //while(!value.compare_exchange_weak(tmp, tmp+1));
+        //while(!value.compare_exchange_weak(tmp, tmp+1, std::memory_order_acq_rel,std::memory_order_acquire));
     };
     for(int i=0;i<8;i++)
         t[i]=thread(func);
@@ -55,9 +60,9 @@ int main(){
     DC::timer timer;
     timer.start();
     int success_count=0;
-    for(int i=0;i<40000;i++)
+    for(int i=0;i<15000;i++)
         if(test_atomic())
-        //    if(test_noSync())
+            //    if(test_noSync())
             success_count++;
     timer.stop();
     
