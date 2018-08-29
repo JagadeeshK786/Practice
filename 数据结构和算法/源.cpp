@@ -13,73 +13,52 @@ std::vector<int> twoSum(const std::vector<int>& nums, int target) {
 }
 
 //https://leetcode-cn.com/problems/longest-substring-without-repeating-characters/description/
+//不要一次性拿全部子串，按个数拿子
 std::vector<std::string> getAllSubstring(const std::string& str) {
+	std::unordered_set<std::size_t> hash_value_set;
+	std::hash<std::string> string_hash;
 	std::vector<std::string> returnMe;
-	returnMe.reserve([&str]()->unsigned int {
-		if (str.size() % 2 == 0)
-			return (1 + str.size()) * str.size() / 2;
-		else
-			return (1 + str.size()) * (str.size() - 1) / 2 + (str.size() - 1) / 2 + 1;
-	}());
-	for (std::size_t i = str.size(); i > 0; i--)
-		for (std::size_t i2 = 0; i2 <= str.size() - i; i2++)
-			returnMe.push_back(str.substr(i2, i));
+	for (std::size_t i = str.size(); i > 0; i--) {
+		for (std::size_t i2 = 0; i2 <= str.size() - i; i2++) {
+			auto tmp = str.substr(i2, i);
+			auto tmp_hash = string_hash(tmp);
+			if (hash_value_set.find(tmp_hash) == hash_value_set.end()) {
+				returnMe.push_back(std::move(tmp));
+				hash_value_set.insert(tmp_hash);
+			}
+		}
+	}
 	return returnMe;
 }
 
-/*
 int lengthOfLongestSubstring(const std::string& s) {
-int returnMe = 0;
-std::unordered_set<char> set;
-unsigned int testMe = s.size() / 2;
-while (true) {
-auto subs = getSubstringWithSize(s, testMe);
-bool isOK = true;
-for (const auto& p : subs) {
-if (p.size() <= returnMe)
-continue;
-for (const auto& c : p) {
-if (set.find(c) != set.end()) {
-isOK = false;
-break;
-}
-else {
-set.insert(c);
-}
-}
-if (isOK) {
-returnMe = p.size();
-testMe += testMe / 2;
-}
-else {
-if ((testMe > returnMe&&returnMe != 0) || testMe == 1)
-return returnMe;
-testMe -= testMe / 2;
-}
-set.clear();
-}
-}
-}*/
-
-int lengthOfLongestSubstring(const std::string& s) {
-	auto allSubstring = getAllSubstring(s);	
+	std::unordered_set<std::size_t> hash_value_set;
+	std::hash<std::string> string_hash;
 	int returnMe = 0;
-	for (const auto& p : allSubstring) {
-		std::unordered_set<char> set;
-		if (p.size() <= returnMe)
-			continue;
-		bool isOK = true;
-		for (const auto& c : p) {
-			if (set.find(c) != set.end()) {
-				isOK = false;
-				break;
-			}
-			else {
-				set.insert(c);
+	for (std::size_t i = s.size(); i > 0; i--) {
+		for (std::size_t i2 = 0; i2 <= s.size() - i; i2++) {
+			auto tmp = s.substr(i2, i);
+			auto tmp_hash = string_hash(tmp);
+			if (hash_value_set.find(tmp_hash) == hash_value_set.end()) {
+				const auto& p = tmp;				
+				std::unordered_set<char> set;
+				if (p.size() <= returnMe)
+					continue;
+				bool isOK = true;
+				for (const auto& c : p) {
+					if (set.find(c) != set.end()) {
+						isOK = false;
+						break;
+					}
+					else {
+						set.insert(c);
+					}
+				}
+				if (isOK)
+					returnMe = p.size();
+				hash_value_set.insert(tmp_hash);
 			}
 		}
-		if (isOK)
-			returnMe = p.size();
 	}
 	return returnMe;
 }
