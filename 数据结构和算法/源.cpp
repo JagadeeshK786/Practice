@@ -2,7 +2,9 @@
 #include <vector>
 #include <string>
 #include <array>
+#include <list>
 #include <unordered_set>
+#include <unordered_map>
 #include <cctype>
 #include <cmath>
 
@@ -139,8 +141,63 @@ int myAtoi(const std::string& str) {
 	return result;
 }
 
+class LRUCache {
+public:
+	LRUCache(int capacity) :cap{ capacity } {
+	}
+
+	int get(int key) {
+		auto value_iter = m_map.find(key);
+		if (value_iter == m_map.end())
+			return -1;
+		m_key.erase(std::find(m_key.begin(), m_key.end(), key));
+		m_key.push_front(key);
+		return value_iter->second;
+	}
+
+	void put(int key, int value) {
+		if (size == cap) {
+			m_map.erase(*m_key.rbegin());
+			m_key.erase(--m_key.rbegin().base());
+		}
+		m_map.insert_or_assign(key, value);
+		m_key.push_front(value);
+		if (size != cap)
+			size++;
+	}
+
+private:
+	const int cap;
+	int size = 0;
+	std::unordered_map<int, int> m_map;
+	std::list<int> m_key;
+};
+
+//868. 二进制间距
+int binaryGap(int N) {
+	static unsigned int pos[32];
+	unsigned int index = 0;
+	for (unsigned int i = 0; i < 32; i++)
+		if ((N & 1 << i) == 1 << i)
+			pos[index++] = i;
+	if (index < 2)
+		return 0;
+	unsigned int  result = 0;
+	for (unsigned int i = 1; i < index; i++) {
+		auto tmp = pos[i] - pos[i - 1];
+		if (tmp > result)
+			result = tmp;
+	}
+	return static_cast<int>(result);
+}
+
+//869. 重新排序得到 2 的幂
+bool reorderedPowerOf2(int N) {
+	auto ispow2 = [](int number) {
+		return (number & number - 1) == 0;
+	};
+}
+
 int main() {
-	auto look = myAtoi("0-1");
-	look = myAtoi("42");
 	std::cout << "";
 }
