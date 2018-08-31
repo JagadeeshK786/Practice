@@ -41,7 +41,7 @@ int lengthOfLongestSubstring(const std::string& s) {
 
 //https://leetcode-cn.com/problems/string-to-integer-atoi/description/
 static const int32_t int_max = 2147483647;
-static const int32_t int_min = -2147483648;
+static const int32_t int_min = INT_MIN;
 
 int32_t get_digit_count(int32_t num) {
 	if (num == 0)
@@ -297,9 +297,11 @@ carray_with_size make_carray_with_size(const char* str, unsigned int length) {
 	return returnme;
 }
 
-std::vector<carray_with_size> prem(const char* inputstr, unsigned int length) {
-	auto str = make_carray_with_size(inputstr, length);
-	std::vector<carray_with_size> returnme;
+std::vector<carray_with_size> returnme;
+
+void prem(const char* inputstr, unsigned int length) {
+	returnme.clear();
+	auto str = make_carray_with_size(inputstr, length);	
 	returnme.reserve(count_distinct_permutations(str) + 1);
 	std::sort(str.begin(), str.end());
 	returnme.push_back(str);
@@ -321,7 +323,6 @@ std::vector<carray_with_size> prem(const char* inputstr, unsigned int length) {
 		if (str.begin() == p)
 			break;
 	}
-	return returnme;
 }
 
 bool ispow2(int number) {
@@ -340,11 +341,11 @@ void just_peek(const std::vector<carray_with_size>& source);
 bool reorderedPowerOf2(int n) {
 	if (n < 10)
 		return ispow2(n);
-
 	static char n_carray_representation[10];
 	memset(n_carray_representation, 0, 10);
 	internal_itoa(n, n_carray_representation, 10);
-	auto permutation_sequence = prem(n_carray_representation, strlen(n_carray_representation));
+	prem(n_carray_representation, strlen(n_carray_representation));
+	auto& permutation_sequence = returnme;
 	//just_peek(permutation_sequence);
 	for (auto& p : permutation_sequence) {
 		if ((*(p.end() - 1) != '0')
