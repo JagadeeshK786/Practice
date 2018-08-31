@@ -5,8 +5,10 @@
 #include <list>
 #include <unordered_set>
 #include <unordered_map>
+#include <memory>
 #include <cctype>
 #include <cmath>
+#include <cstring>
 
 //https://leetcode-cn.com/problems/two-sum/description/
 std::vector<int> twoSum(const std::vector<int>& nums, int target) {
@@ -192,12 +194,179 @@ int binaryGap(int N) {
 }
 
 //869. 重新排序得到 2 的幂
-bool reorderedPowerOf2(int N) {
-	auto ispow2 = [](int number) {
-		return (number & number - 1) == 0;
-	};
+
+char* internal_itoa(int num, char* str, int base) {
+	int i = 0;
+	bool isNegative = false;
+	if (num == 0) {
+		str[i++] = '0';
+		str[i] = '\0';
+		return str;
+	}
+	if (num < 0 && base == 10) {
+		isNegative = true;
+		num = -num;
+	}
+	while (num != 0) {
+		int rem = num % base;
+		str[i++] = (rem > 9) ? (rem - 10) + 'a' : rem + '0';
+		num = num / base;
+	}
+	if (isNegative)
+		str[i++] = '-';
+	str[i] = '\0';
+	std::reverse(str, str + i);
+	return str;
+}
+
+int internal_atoi(char *str) {
+	int res = 0;
+	for (int i = 0; str[i] != '\0'; ++i)
+		res = res * 10 + str[i] - '0';
+	return res;
+}
+
+struct carray_with_size {
+	carray_with_size() {}
+
+	carray_with_size(const carray_with_size& rhs) :data(new char[rhs.size + 1]), size(rhs.size) {
+		memcpy(this->data, rhs.data, rhs.size);
+		data[size] = 0;
+	}
+
+	carray_with_size(carray_with_size&& rhs) :data(rhs.data), size(rhs.size) {
+		rhs.data = nullptr;
+		rhs.size = 0;
+	}
+
+	char operator[](unsigned int index)const {
+		return data[index];
+	}
+
+	~carray_with_size() {
+		if (data != nullptr)
+			delete[] data;
+	}
+
+	char* begin() {
+		return data;
+	}
+
+	char* end() {
+		return data + size;
+	}
+
+	char *data = nullptr;
+	unsigned int size = 0;
+};
+
+//https://www.geeksforgeeks.org/number-distinct-permutation-string-can/
+int factorial(int n) {
+	int fact = 1;
+	for (int i = 2; i <= n; i++)
+		fact = fact * i;
+	return fact;
+}
+
+int count_distinct_permutations(const carray_with_size& str) {
+	int freq[26];
+	memset(freq, 0, sizeof(freq));
+	for (int i = 0; i < str.size; i++)
+		if (str[i] >= 'a')
+			freq[str[i] - 'a']++;
+	int fact = 1;
+	for (int i = 0; i < 26; i++)
+		fact = fact * factorial(freq[i]);
+	return factorial(str.size) / fact;
+}
+
+//https://www.cnblogs.com/bakari/archive/2012/08/02/2620826.html
+template <typename iterator_t>
+iterator_t find_max_for_one(iterator_t p, iterator_t q) {
+	while (*q <= *p)
+		q--;
+	return q;
+}
+
+carray_with_size make_carray_with_size(const char* str, unsigned int length) {
+	carray_with_size returnme;
+	returnme.data = new char[length + 1];
+	returnme.size = length;
+	memcpy(returnme.data, str, length);
+	returnme.data[length] = 0;
+	return returnme;
+}
+
+std::vector<carray_with_size> prem(const char* inputstr, unsigned int length) {
+	auto str = make_carray_with_size(inputstr, length);
+	std::vector<carray_with_size> returnme;
+	returnme.reserve(count_distinct_permutations(str) + 1);
+	std::sort(str.begin(), str.end());
+	returnme.push_back(str);
+	//p代表替换点					 
+	auto p = str.end() - 1;
+	while (p != str.begin()) {
+		p--;
+		if (*p < *(p + 1)) {
+			//找与替换点交换的点
+			decltype(p) max = find_max_for_one(p, str.end() - 1);
+			//交换
+			std::swap(*p, *max);
+			//将替换点后所有数进行反转
+			std::reverse(p + 1, str.end());
+			returnme.push_back(str);
+			//将替换点置最后一个点，开始下一轮循环
+			p = str.end() - 1;
+		}
+		if (str.begin() == p)
+			break;
+	}
+	return returnme;
+}
+
+bool ispow2(int number) {
+	return (number & number - 1) == 0;
+}
+
+template<typename vector_t>
+void vector_fast_erase(vector_t& vec, typename vector_t::iterator iterator) {
+	if (vec.end() - 1 != iterator)
+		std::swap(*iterator, *(vec.end() - 1));
+	vec.erase(vec.end() - 1);
+}
+
+void just_peek(const std::vector<carray_with_size>& source);
+
+bool reorderedPowerOf2(int n) {
+	if (n < 10)
+		return ispow2(n);
+
+	static char n_carray_representation[10];
+	memset(n_carray_representation, 0, 10);
+	internal_itoa(n, n_carray_representation, 10);
+	auto permutation_sequence = prem(n_carray_representation, strlen(n_carray_representation));
+	//just_peek(permutation_sequence);
+	for (auto& p : permutation_sequence) {
+		if ((*(p.end() - 1) != '0')
+			&& (*(p.end() - 1) - '0') % 2 != 0)
+			continue;
+		//auto look = atoi(p.data);
+		if (ispow2(internal_atoi(p.data)))
+			return true;
+	}
+	return false;
+}
+
+void just_peek(const std::vector<carray_with_size>& source) {
+	std::vector<std::string> look_me;
+	look_me.reserve(source.size() + 1);
+	for (const auto& p : source)
+		look_me.emplace_back(p.data, p.size);
+	std::cout << "";
 }
 
 int main() {
+	auto look = reorderedPowerOf2(60985376);
+	look = reorderedPowerOf2(6094);
 	std::cout << "";
 }
