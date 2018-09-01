@@ -366,8 +366,101 @@ void just_peek(const std::vector<carray_with_size>& source) {
 	std::cout << "";
 }
 
+//https://leetcode-cn.com/problems/minimum-window-substring/description/
+//暴力解
+std::string minWindow(const std::string& s, const std::string& t) {
+	if (t.size() > s.size())
+		return "";
+	if (t == s)
+		return s;
+	std::string::const_iterator ans_bg = s.end(), ans_ed = s.end();
+	for (auto win_bg = s.begin(); win_bg != s.end(); win_bg++) {
+		for (auto win_ed = win_bg; win_ed != s.end(); win_ed++) {
+			bool is_found = true;
+			for (auto t_iterator = t.begin(); t_iterator != t.end(); t_iterator++) {
+				bool is_char_found = false;
+				for (auto win_iterator = win_bg; win_iterator <= win_ed; win_iterator++) {
+					if (*win_iterator == *t_iterator) {
+						is_char_found = true;
+						break;
+					}
+				}
+				if (!is_char_found) {
+					is_found = false;
+					break;
+				}
+			}
+			if ((is_found
+				&& std::distance(ans_bg, ans_ed) == 0) ||
+				(is_found&&std::distance(win_bg, win_ed + 1) >= std::distance(t.begin(), t.end())
+					&& std::distance(win_bg, win_ed) < std::distance(ans_bg, ans_ed))) {
+				ans_bg = win_bg;
+				ans_ed = win_ed + 1;
+			}
+		}
+	}
+	return std::string(ans_bg, ans_ed);
+}
+
+std::string minWindow2(const std::string& S, const std::string& T) {
+	// 记录目标字符串每个字母出现次数
+	int srcHash[128];
+	memset(srcHash, 0, 128 * sizeof(int));
+	for (const auto ch : T)
+		srcHash[ch]++;
+		
+	// 用于记录窗口内每个字母出现次数 
+	int destHash[128];
+	memset(destHash, 0, 128 * sizeof(int));
+
+	int found = 0, begin = -1, end = S.length(), minLength = S.length();
+	for (int start =0, i = 0; i < S.length(); i++) {
+		// 每来一个字符给它的出现次数加1
+		destHash[S[i]]++;
+		// 如果加1后这个字符的数量不超过目标串中该字符的数量，则找到了一个匹配字符
+		if (destHash[S[i]] <= srcHash[S[i]])
+			found++;
+		// 如果找到的匹配字符数等于目标串长度，说明找到了一个符合要求的子串    
+		if (found == T.size()) {
+			// 将开头没用的都跳过，没用是指该字符出现次数超过了目标串中出现的次数，并把它们出现次数都减1
+			while (start < i && destHash[S[start]] > srcHash[S[start]]) {
+				destHash[S[start]]--;
+				start++;
+			}
+			// 这时候start指向该子串开头的字母，判断该子串长度
+			if (i - start < minLength) {
+				minLength = i - start;
+				begin = start;
+				end = i;
+			}
+			// 把开头的这个匹配字符跳过，并将匹配字符数减1
+			destHash[S[start]]--;
+			found--;
+			// 子串起始位置加1，我们开始看下一个子串了
+			start++;
+		}
+	}
+	// 如果begin没有修改过，返回空
+	if (begin == -1)
+		return "";
+	return S.substr(begin, end - begin + 1);
+}
+
+std::string minWindow3(std::string& s, std::string& t) {
+	std::vector<int> map(128, 0);
+	for (auto c : t) map[c]++;
+	int counter = t.size(), begin = 0, end = 0, d = INT_MAX, head = 0;
+	while (end<s.size()) {
+		if (map[s[end++]]-->0) counter--; //in t
+		while (counter == 0) { //valid
+			if (end - begin<d)  d = end - (head = begin);
+			if (map[s[begin++]]++ == 0) counter++;  //make it invalid
+		}
+	}
+	return d == INT_MAX ? "" : s.substr(head, d);
+}
+
 int main() {
-	auto look = reorderedPowerOf2(60985376);
-	look = reorderedPowerOf2(6094);
+	auto look = minWindow2("acbbaca", "aba");
 	std::cout << "";
 }
