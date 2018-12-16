@@ -27,7 +27,7 @@ void merge_sort(IterType begin1, IterType end1, IterType begin2, IterType end2, 
         else
             *output++ = *begin2++;
     }
-    auto push_back = [&output](IterType begin, IterType end) -> void {
+    const auto &push_back = [&output](IterType begin, IterType end) -> void {
         while (begin != end)
             *output++ = *begin++;
     };
@@ -41,7 +41,7 @@ int main()
 {
     std::vector<int> vec{2, 1, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2};
     insertion_sort(vec.begin(), vec.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
-    
+
     std::vector<int> first{1, 3, 5, 7, 9}, second{2, 4, 6, 8, 10}, output(10);
     merge_sort(first.begin(), first.end(), second.begin(), second.end(), output.begin(), [](auto arg0, auto arg1) { return arg1 - arg0; });
     std::cout << "";
