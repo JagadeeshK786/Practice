@@ -41,8 +41,9 @@ int main()
 {
     std::vector<int> vec{2, 1, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2};
     insertion_sort(vec.begin(), vec.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
-
-    std::vector<int> first{1, 3, 5, 7, 9}, second{2, 4, 6, 8, 10}, output(10);
+    
+    std::vector<int> first{1, 3, 5, 7, 9, 100}, second{2, 4, 6, 8, 10, 100, 1000};
+    decltype(first) output(first.size() + second.size());
     merge_sort(first.begin(), first.end(), second.begin(), second.end(), output.begin(), [](auto arg0, auto arg1) { return arg1 - arg0; });
     std::cout << "";
 }
