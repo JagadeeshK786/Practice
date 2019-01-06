@@ -89,9 +89,7 @@ int main()
 	std::vector<int> vec{ 1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2 };
 	insertion_sort(vec.begin(), vec.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
 
-	std::vector<int> vec2{ 1, 3, 5, 7, 9, 100, 2, 4, 6, 8, 10, 100, 1000 };
-	//std::vector<int> vec2{ 1,100, 9,  2 };
-	//merge_impl(vec2.begin(), vec2.begin() + 6, vec2.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
+	std::vector<int> vec2{ 1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2 };
 	merge_sort(vec2.begin(), vec2.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
 
 	std::cout << "";
