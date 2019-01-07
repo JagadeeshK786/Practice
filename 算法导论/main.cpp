@@ -43,8 +43,8 @@ void insertion_sort(IterType begin, IterType end, const PredType &pred)
 #endif
 
 #include <new>
-#include <memory>//unique_ptr
-#include <iterator>//std::iterator_traits
+#include <memory>   //unique_ptr
+#include <iterator> //std::iterator_traits
 #include <stack>
 
 template <typename IterType, typename PredType>
@@ -73,8 +73,9 @@ void merge_impl(IterType begin, IterType middle, IterType end, const PredType &p
 }
 
 template <typename IterType>
-struct pack_t {
-	pack_t(IterType arg0, IterType arg1) :begin(arg0), end(arg1) {	}
+struct pack_t
+{
+	pack_t(IterType arg0, IterType arg1) : begin(arg0), end(arg1) {}
 
 	unsigned char state = 0;
 	typename std::iterator_traits<IterType>::difference_type middle;
@@ -85,29 +86,37 @@ template <typename IterType, typename PredType>
 void merge_sort(IterType begin, IterType end, const PredType &pred)
 {
 	std::stack<pack_t<IterType>> callstack;
-	auto state_machine = [&pred, &callstack](pack_t<IterType>& context)->bool {
-		switch (context.state) {
-		case 0: {
+	auto state_machine = [&pred, &callstack](pack_t<IterType> &context) -> bool {
+		switch (context.state)
+		{
+		case 0:
+		{
 			auto distance = std::distance(context.begin, context.end);
 			if (context.begin == context.end || distance == 1)
 				return false;
 			context.middle = distance / 2;
 			callstack.emplace(context.begin, context.begin + context.middle);
-		} break;
-		case 1: {
+		}
+		break;
+		case 1:
+		{
 			callstack.emplace(context.begin + context.middle, context.end);
-		}break;
-		case 2: {
+		}
+		break;
+		case 2:
+		{
 			merge_impl(context.begin, context.begin + context.middle, context.end, pred);
 			return false;
-		}break;
+		}
+		break;
 		}
 		context.state++;
 		return true;
 	};
 
 	callstack.emplace(begin, end);
-	while (!callstack.empty()) {
+	while (!callstack.empty())
+	{
 		if (!state_machine(callstack.top()))
 			callstack.pop();
 	}
@@ -115,10 +124,10 @@ void merge_sort(IterType begin, IterType end, const PredType &pred)
 
 int main()
 {
-	std::vector<int> vec{ 1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2 };
+	std::vector<int> vec{1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2};
 	insertion_sort(vec.begin(), vec.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
 
-	std::vector<int> vec2{ 1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2 };
+	std::vector<int> vec2{1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2};
 	merge_sort(vec2.begin(), vec2.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
 
 	std::cout << "";
