@@ -50,6 +50,10 @@ void insertion_sort(IterType begin, IterType end, const PredType &pred)
 template <typename IterType, typename PredType>
 void merge_impl(IterType begin, IterType middle, IterType end, const PredType &pred)
 {
+	//避免额外的空间分配？
+	//http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.88.1155&rep=rep1&type=pdf
+	//http://keithschwarz.com/interesting/code/?dir=inplace-merge
+
 	//当IterType::value_type不为trivially copyable类型时，下面的new带来了多余的初始化操作
 	std::unique_ptr<IterType::value_type[]> temp_array(new IterType::value_type[std::distance(begin, end)]);
 
@@ -124,10 +128,10 @@ void merge_sort(IterType begin, IterType end, const PredType &pred)
 
 int main()
 {
-	std::vector<int> vec{1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2};
+	std::vector<int> vec{ 1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2 };
 	insertion_sort(vec.begin(), vec.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
 
-	std::vector<int> vec2{1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2};
+	std::vector<int> vec2{ 1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2,-17 };
 	merge_sort(vec2.begin(), vec2.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
 
 	std::cout << "";
