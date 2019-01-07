@@ -43,7 +43,9 @@ void insertion_sort(IterType begin, IterType end, const PredType &pred)
 #endif
 
 #include <new>
-#include <memory>
+#include <memory>//unique_ptr
+#include <iterator>//std::iterator_traits
+#include <stack>
 
 template <typename IterType, typename PredType>
 void merge_impl(IterType begin, IterType middle, IterType end, const PredType &pred)
@@ -70,18 +72,45 @@ void merge_impl(IterType begin, IterType middle, IterType end, const PredType &p
 		std::copy(&temp_array[left_begin], &temp_array[left_end], begin);
 }
 
+template <typename IterType>
+struct pack_t {
+	pack_t(IterType arg0, IterType arg1) :begin(arg0), end(arg1) {	}
+
+	unsigned char state = 0;
+	typename std::iterator_traits<IterType>::difference_type middle;
+	IterType begin, end;
+};
+
 template <typename IterType, typename PredType>
 void merge_sort(IterType begin, IterType end, const PredType &pred)
 {
-	auto distance = std::distance(begin, end);
-	if (begin == end || distance == 1)
-		return;
+	std::stack<pack_t<IterType>> callstack;
+	auto state_machine = [&pred, &callstack](pack_t<IterType>& context)->bool {
+		switch (context.state) {
+		case 0: {
+			auto distance = std::distance(context.begin, context.end);
+			if (context.begin == context.end || distance == 1)
+				return false;
+			context.middle = distance / 2;
+			callstack.emplace(context.begin, context.begin + context.middle);
+		} break;
+		case 1: {
+			callstack.emplace(context.begin + context.middle, context.end);
+		}break;
+		case 2: {
+			merge_impl(context.begin, context.begin + context.middle, context.end, pred);
+			return false;
+		}break;
+		}
+		context.state++;
+		return true;
+	};
 
-	//在数据较多时将会栈溢出
-	auto middle = distance / 2;
-	merge_sort(begin, begin + middle, pred);
-	merge_sort(begin + middle, end, pred);
-	merge_impl(begin, begin + middle, end, pred);
+	callstack.emplace(begin, end);
+	while (!callstack.empty()) {
+		if (!state_machine(callstack.top()))
+			callstack.pop();
+	}
 }
 
 int main()
