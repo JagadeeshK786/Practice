@@ -55,7 +55,7 @@ void merge_impl(IterType begin, IterType middle, IterType end, const PredType &p
 	//http://keithschwarz.com/interesting/code/?dir=inplace-merge
 
 	//当IterType::value_type不为trivially copyable类型时，下面的new带来了多余的初始化操作
-	std::unique_ptr<IterType::value_type[]> temp_array(new IterType::value_type[std::distance(begin, end)]);
+	std::unique_ptr<typename IterType::value_type[]> temp_array(new typename IterType::value_type[std::distance(begin, end)]);
 
 	std::copy(begin, end, temp_array.get());
 
