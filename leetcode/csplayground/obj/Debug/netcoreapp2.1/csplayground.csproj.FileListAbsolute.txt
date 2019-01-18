@@ -1,0 +1,11 @@
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/bin/Debug/netcoreapp2.1/csplayground.deps.json
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/bin/Debug/netcoreapp2.1/csplayground.runtimeconfig.json
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/bin/Debug/netcoreapp2.1/csplayground.runtimeconfig.dev.json
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/bin/Debug/netcoreapp2.1/csplayground.dll
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/bin/Debug/netcoreapp2.1/csplayground.pdb
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/obj/Debug/netcoreapp2.1/csplayground.csprojAssemblyReference.cache
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/obj/Debug/netcoreapp2.1/csplayground.csproj.CoreCompileInputs.cache
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/obj/Debug/netcoreapp2.1/csplayground.AssemblyInfoInputs.cache
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/obj/Debug/netcoreapp2.1/csplayground.AssemblyInfo.cs
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/obj/Debug/netcoreapp2.1/csplayground.dll
+/Users/liuziang/Documents/GitHub/Practice/leetcode/csplayground/obj/Debug/netcoreapp2.1/csplayground.pdb
