@@ -55,7 +55,7 @@ void merge_impl(IterType begin, IterType middle, IterType end, const PredType &p
 	//http://keithschwarz.com/interesting/code/?dir=inplace-merge
 
 	//当IterType::value_type不为trivially copyable类型时，下面的new带来了多余的初始化操作
-	std::unique_ptr<IterType::value_type[]> temp_array(new IterType::value_type[std::distance(begin, end)]);
+	std::unique_ptr<typename IterType::value_type[]> temp_array(new typename IterType::value_type[std::distance(begin, end)]);
 
 	std::copy(begin, end, temp_array.get());
 
@@ -126,13 +126,24 @@ void merge_sort(IterType begin, IterType end, const PredType &pred)
 	}
 }
 
+void make_heap() {}
+void push_heap() {}
+void pop_heap() {}
+void sort_heap() {}
+
 int main()
 {
-	std::vector<int> vec{ 1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2 };
+	std::vector<int> vec{1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2};
 	insertion_sort(vec.begin(), vec.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
 
-	std::vector<int> vec2{ 1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2,-17 };
+	std::vector<int> vec2{1, 2, -1, 10, 7, 8, 9, 4, 2, 100, -10, -2, -17};
 	merge_sort(vec2.begin(), vec2.end(), [](auto arg0, auto arg1) { return arg1 - arg0; });
+
+	std::cout << "test";
+
+	std::vector<int> v{3, 1, 4, 1, 5, 9, 2, 3, 8, 7, 6, 5};
+
+	std::make_heap(v.begin(), v.end());
 
 	std::cout << "";
 }

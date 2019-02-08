@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "clang++",
+            "args": [
+                "main.cpp",
+                "-std=c++17",
+                "-g",
+                "-o",
+                "a.out"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
