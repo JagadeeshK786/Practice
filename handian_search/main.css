@@ -1,0 +1,40 @@
+#SearchBox {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 999;
+    background-color: rgb(199, 199, 199);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+#SearchBox input {
+    padding: 0 10px;
+    margin: 0;
+    line-height: 30px;
+    height: 30px;
+    font-size: 12px;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif, '微软雅黑';
+    border: 0;
+    background-color: transparent;
+    outline: none;
+    color: #fff;
+    width: 160px;
+}
+#SearchBox input::placeholder {
+    color:black;
+}
+#SearchBox .clear {
+    color: black;
+    background-color: rgb(170, 170, 170);
+    line-height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-block;
+}
+#SearchBox .clear:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+#SearchBox .clear:active {
+    background-color: rgba(255, 255, 255, 0.15);
+}
