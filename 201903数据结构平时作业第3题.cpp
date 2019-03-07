@@ -41,6 +41,8 @@ array_size:数组元素数
 iter:指向要删除的数组元素的指针（若该指针所指对象不存在于数组中，则此函数行为未定义）
 */
 void remove(int *input_array, std::size_t array_size, int *iter) {
+  if (array_size == 0)
+    return;
   for (; iter != input_array + array_size - 1; iter++)
     *iter = *(iter + 1);
   *(input_array + array_size - 1) = 0;
