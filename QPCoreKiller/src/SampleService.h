@@ -19,6 +19,8 @@
 
 #pragma once
 #include <memory>
+#include <tlhelp32.h>
+#include <utility>
 #include "ServiceBase.h"
 #include "DC_File.h"
 
@@ -61,6 +63,21 @@ protected:
 
 private:
 	void fucktencent() {
+		auto pid=get_qprotect_pid();
+		if (std::get<0>(pid)) {			
+			HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, std::get<1>(pid));
+			if (hProcess == NULL) {
+				WriteErrorLogEntry(L"OpenSCManager failed");
+			}
+			else
+			{
+				if (TerminateProcess(hProcess, 0) == 0) {
+					WriteErrorLogEntry(L"TerminateProcess failed");
+				}
+				CloseHandle(hProcess);
+			}
+		}
+
 		// Get a handle to the SCM database. 
 		SC_HANDLE schSCManager = OpenSCManager(
 			NULL,                    // local computer
@@ -92,198 +109,38 @@ private:
 		decltype(schSCManagerH) schServiceH(&schService, [](SC_HANDLE* h) {
 			CloseServiceHandle(*h);
 		});
-		/*
-		// Make sure the service is not already stopped.
-		SERVICE_STATUS_PROCESS ssp;
-		DWORD dwStartTime = GetTickCount();
-		DWORD dwBytesNeeded;
-		DWORD dwTimeout = 30000; // 30-second time-out
-		DWORD dwWaitTime;
-		if (!QueryServiceStatusEx(
-			schService,
-			SC_STATUS_PROCESS_INFO,
-			(LPBYTE)&ssp,
-			sizeof(SERVICE_STATUS_PROCESS),
-			&dwBytesNeeded))
-		{
-			WriteErrorLogEntry(L"QueryServiceStatusEx failed (%d)\n", GetLastError());
-		}
-
-		if (ssp.dwCurrentState == SERVICE_STOPPED)
-		{
-			WriteErrorLogEntry(L"QPCore is already stopped.\n");
-		}
-
-		// If a stop is pending, wait for it.
-
-		while (ssp.dwCurrentState == SERVICE_STOP_PENDING)
-		{
-			WriteErrorLogEntry(L"QPCore stop pending...\n");
-
-			// Do not wait longer than the wait hint. A good interval is
-			// one-tenth of the wait hint but not less than 1 second
-			// and not more than 10 seconds.
-
-			dwWaitTime = ssp.dwWaitHint / 10;
-
-			if (dwWaitTime < 1000)
-				dwWaitTime = 1000;
-			else if (dwWaitTime > 10000)
-				dwWaitTime = 10000;
-
-			Sleep(dwWaitTime);
-
-			if (!QueryServiceStatusEx(
-				schService,
-				SC_STATUS_PROCESS_INFO,
-				(LPBYTE)&ssp,
-				sizeof(SERVICE_STATUS_PROCESS),
-				&dwBytesNeeded))
-			{
-				WriteErrorLogEntry(L"QueryServiceStatusEx failed (%d)\n", GetLastError());
-			}
-
-			if (ssp.dwCurrentState == SERVICE_STOPPED)
-			{
-				WriteErrorLogEntry(L"QPCore stopped successfully.\n");
-			}
-
-			if (GetTickCount() - dwStartTime > dwTimeout)
-			{
-				WriteErrorLogEntry(L"QPCore stop timed out.\n");
-			}
-		}
-
-		// If the service is running, dependencies must be stopped first.
-		StopDependentServices(schSCManager,schService);
-
-		// Send a stop code to the service.
-
-		if (!ControlService(
-			schService,
-			SERVICE_CONTROL_STOP,
-			(LPSERVICE_STATUS)&ssp))
-		{
-			WriteErrorLogEntry(L"ControlService failed (%d)\n", GetLastError());
-		}
-
-		// Wait for the service to stop.
-
-		while (ssp.dwCurrentState != SERVICE_STOPPED)
-		{
-			Sleep(ssp.dwWaitHint);
-			if (!QueryServiceStatusEx(
-				schService,
-				SC_STATUS_PROCESS_INFO,
-				(LPBYTE)&ssp,
-				sizeof(SERVICE_STATUS_PROCESS),
-				&dwBytesNeeded))
-			{
-				WriteErrorLogEntry(L"QueryServiceStatusEx failed (%d)\n", GetLastError());
-			}
-
-			if (ssp.dwCurrentState == SERVICE_STOPPED)
-				break;
-
-			if (GetTickCount() - dwStartTime > dwTimeout)
-			{
-				//printf("Wait timed out\n");
-			}
-		}*/
 		ChangeServiceConfig(schService, SERVICE_NO_CHANGE, SERVICE_DEMAND_START, SERVICE_NO_CHANGE, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	}
 
-	BOOL __stdcall StopDependentServices(SC_HANDLE schSCManager, SC_HANDLE schService)
-	{
-		DWORD i;
-		DWORD dwBytesNeeded;
-		DWORD dwCount;
+	std::pair<bool,DWORD> get_qprotect_pid() {
+		PROCESSENTRY32 pe32;
+		pe32.dwSize = sizeof(PROCESSENTRY32);
 
-		LPENUM_SERVICE_STATUS   lpDependencies = NULL;
-		ENUM_SERVICE_STATUS     ess;
-		SC_HANDLE               hDepService;
-		SERVICE_STATUS_PROCESS  ssp;
+		using Guard = std::unique_ptr<HANDLE, void(*)(HANDLE*)>;
 
-		DWORD dwStartTime = GetTickCount();
-		DWORD dwTimeout = 30000; // 30-second time-out
-
-		// Pass a zero-length buffer to get the required buffer size.
-		if (EnumDependentServices(schService, SERVICE_ACTIVE,
-			lpDependencies, 0, &dwBytesNeeded, &dwCount))
-		{
-			// If the Enum call succeeds, then there are no dependent
-			// services, so do nothing.
-			return TRUE;
+		// Take a snapshot of all processes in the system.
+		HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if (hProcessSnap == INVALID_HANDLE_VALUE) {
+			WriteErrorLogEntry(L"CreateToolhelp32Snapshot failed");
+			return std::make_pair(false, 0);
 		}
-		else
+		Guard hProcessSnapGuard(&hProcessSnap, [](HANDLE* h) {CloseHandle(*h); });
+
+		// Retrieve information about the first process
+		if (!Process32First(hProcessSnap, &pe32))
 		{
-			if (GetLastError() != ERROR_MORE_DATA)
-				return FALSE; // Unexpected error
-
-			// Allocate a buffer for the dependencies.
-			lpDependencies = (LPENUM_SERVICE_STATUS)HeapAlloc(
-				GetProcessHeap(), HEAP_ZERO_MEMORY, dwBytesNeeded);
-
-			if (!lpDependencies)
-				return FALSE;
-
-			__try {
-				// Enumerate the dependencies.
-				if (!EnumDependentServices(schService, SERVICE_ACTIVE,
-					lpDependencies, dwBytesNeeded, &dwBytesNeeded,
-					&dwCount))
-					return FALSE;
-
-				for (i = 0; i < dwCount; i++)
-				{
-					ess = *(lpDependencies + i);
-					// Open the service.
-					hDepService = OpenService(schSCManager,
-						ess.lpServiceName,
-						SERVICE_STOP | SERVICE_QUERY_STATUS);
-
-					if (!hDepService)
-						return FALSE;
-
-					__try {
-						// Send a stop code.
-						if (!ControlService(hDepService,
-							SERVICE_CONTROL_STOP,
-							(LPSERVICE_STATUS)&ssp))
-							return FALSE;
-
-						// Wait for the service to stop.
-						while (ssp.dwCurrentState != SERVICE_STOPPED)
-						{
-							Sleep(ssp.dwWaitHint);
-							if (!QueryServiceStatusEx(
-								hDepService,
-								SC_STATUS_PROCESS_INFO,
-								(LPBYTE)&ssp,
-								sizeof(SERVICE_STATUS_PROCESS),
-								&dwBytesNeeded))
-								return FALSE;
-
-							if (ssp.dwCurrentState == SERVICE_STOPPED)
-								break;
-
-							if (GetTickCount() - dwStartTime > dwTimeout)
-								return FALSE;
-						}
-					}
-					__finally
-					{
-						// Always release the service handle.
-						CloseServiceHandle(hDepService);
-					}
-				}
-			}
-			__finally
-			{
-				// Always free the enumeration buffer.
-				HeapFree(GetProcessHeap(), 0, lpDependencies);
-			}
+			WriteErrorLogEntry(L"Process32First failed");
+			return std::make_pair(false, 0);
 		}
-		return TRUE;
+		do
+		{
+			//std::wstring ws(pe32.szExeFile);
+			//DC::File::writeAppend("C:/Users/liuzi/Desktop/names.txt", std::string(ws.begin(), ws.end())+"\r\n");
+			if (wcscmp(pe32.szExeFile, L"QQProtect.exe") == 0)
+				return std::make_pair(true, pe32.th32ProcessID);
+		} while (Process32Next(hProcessSnap, &pe32));
+		WriteErrorLogEntry(L"QQProtect not found");
+		return std::make_pair(false, 0);
 	}
+
 };
