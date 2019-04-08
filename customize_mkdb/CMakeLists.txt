@@ -14,4 +14,5 @@ set(SOURCE_FILES
     mkdb_Storage_KeyIterator.cpp)
 
 add_library(db SHARED ${SOURCE_FILES})
+set_target_properties(db PROPERTIES OUTPUT_NAME "db_x86_64")
 target_link_libraries(db hiredis)

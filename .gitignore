@@ -9,3 +9,4 @@ customize_mkdb/CMakeFiles
 customize_mkdb/cmake_install.cmake
 Makefile
 libdb.dylib
+customize_mkdb/libdb_x86_64.dylib
