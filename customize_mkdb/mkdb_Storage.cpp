@@ -1,4 +1,5 @@
 #include "mkdb_Storage.h"
+#include "redis_hash.h"
 #include <stdbool.h>
 /* Implementation for class mkdb_Storage */
 
@@ -7,13 +8,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 /*
  * Class:     mkdb_Storage
  * Method:    walk
  * Signature: (JLmkdb/Storage/IWalk;)V
  */
 JNIEXPORT void JNICALL Java_mkdb_Storage_walk(JNIEnv *, jobject, jlong,
-                                              jobject) {}
+                                              jobject) {
+  // foreach
+}
 
 /*
  * Class:     mkdb_Storage
@@ -21,7 +25,9 @@ JNIEXPORT void JNICALL Java_mkdb_Storage_walk(JNIEnv *, jobject, jlong,
  * Signature: (JLmkdb/Storage/IWalk;I)V
  */
 JNIEXPORT void JNICALL Java_mkdb_Storage_browse(JNIEnv *, jobject, jlong,
-                                                jobject, jint) {}
+                                                jobject, jint) {
+  // do nothing
+}
 
 /*
  * Class:     mkdb_Storage
@@ -82,7 +88,7 @@ JNIEXPORT jboolean JNICALL Java_mkdb_Storage_remove(JNIEnv *, jobject, jlong,
  */
 JNIEXPORT jlong JNICALL Java_mkdb_Storage_open(JNIEnv *, jobject, jlong,
                                                jstring, jint, jint) {
-  return 0;
+  return 9710;
 }
 
 /*
