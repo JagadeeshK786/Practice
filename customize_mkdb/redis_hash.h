@@ -45,8 +45,10 @@ bool check_types(int type, _CurrentType current_type,
 template <int... _ExpectedReplyTypes> void verify_reply(redisReply *reply) {
   if (reply->type == REDIS_REPLY_ERROR)
     throw std::runtime_error(reply->str);
-  if (!reply || !check_types(reply->type, _ExpectedReplyTypes...))
+  if (!reply)
     throw std::runtime_error("command failed");
+  if (!check_types(reply->type, _ExpectedReplyTypes...))
+    throw std::runtime_error("reply->type not as expect");
 }
 
 } // namespace detail
@@ -161,8 +163,27 @@ public:
                                        byte_array(reply->str, reply->len)};
   }
 
-  void for_each(void (*callback)(const weak_array, const weak_array)) {
-    // callback("key", "value");
+  // if callback returns false,stop foreach
+  void for_each(bool (*callback)(const weak_array, const weak_array)) {
+    std::string command_builder("HGETALL ");
+    command_builder.append(this->hash_name.data, this->hash_name.size);
+
+    auto reply = detail::make_unique_reply(
+        redisCommand(this->context, command_builder.c_str()));
+    detail::verify_reply<REDIS_REPLY_NIL, REDIS_REPLY_ARRAY>(reply.get());
+    if (reply->elements % 2 != 0)
+      throw std::runtime_error(
+          "reply->elements % 2 != 0 in redis_hash::for_each");
+
+    for (uint32_t i = 0; i < reply->elements; i += 2) {
+      redisReply *key = reply->element[i], *value = reply->element[i + 1];
+      detail::verify_reply<REDIS_REPLY_STRING>(key);
+      detail::verify_reply<REDIS_REPLY_STRING>(value);
+
+      if (callback(weak_array(key->str, key->len),
+                   weak_array(value->str, value->len)))
+        break;
+    }
   }
 
 private:
