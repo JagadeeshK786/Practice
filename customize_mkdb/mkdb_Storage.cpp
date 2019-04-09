@@ -1,6 +1,5 @@
 #include "mkdb_Storage.h"
 #include "redis_hash.h"
-#include <functional>
 #include <stdbool.h>
 /* Implementation for class mkdb_Storage */
 
