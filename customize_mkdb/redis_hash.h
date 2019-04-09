@@ -3,6 +3,7 @@
 #define _REDIS_HASH
 #include "hiredis/hiredis.h"
 #include <exception>
+#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <stdlib.h>
@@ -70,7 +71,8 @@ struct byte_array : public weak_array {
   byte_array(const char *in_data) : byte_array(in_data, strlen(in_data)) {}
 
   byte_array(const char *in_data, uint32_t in_size)
-      : weak_array(static_cast<const char *>(malloc(in_size)), in_size) {
+      : weak_array(std::launder(static_cast<const char *>(malloc(in_size))),
+                   in_size) {
     memcpy(this->data, in_data, in_size);
   }
 
@@ -164,7 +166,8 @@ public:
   }
 
   // if callback returns false,stop foreach
-  void for_each(bool (*callback)(const weak_array, const weak_array)) {
+  // bool(const weak_array,const weak_array)
+  template <typename _Callback> void for_each(_Callback callback) {
     std::string command_builder("HGETALL ");
     command_builder.append(this->hash_name.data, this->hash_name.size);
 

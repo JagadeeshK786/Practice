@@ -1,5 +1,6 @@
 #include "mkdb_Storage.h"
 #include "redis_hash.h"
+#include <functional>
 #include <stdbool.h>
 /* Implementation for class mkdb_Storage */
 
@@ -9,14 +10,33 @@
 extern "C" {
 #endif
 
+#define mkdb_redis_address "127.0.0.1"
+#define mkdb_redis_port 6379
+#define mkdb_redis_hash_name "mkdb"
+
 /*
  * Class:     mkdb_Storage
  * Method:    walk
  * Signature: (JLmkdb/Storage/IWalk;)V
  */
-JNIEXPORT void JNICALL Java_mkdb_Storage_walk(JNIEnv *, jobject, jlong,
-                                              jobject) {
-  // foreach
+JNIEXPORT void JNICALL Java_mkdb_Storage_walk(JNIEnv *env, jobject jthis,
+                                              jlong jhandle, jobject jiw) {
+  jclass clazz = env->GetObjectClass(jiw);
+  jmethodID jiwalk_onrecord = env->GetMethodID(clazz, "onRecord", "([B;[B])Z");
+  if (jiwalk_onrecord == 0)
+    return;
+  redis_hash hash(mkdb_redis_address, mkdb_redis_port, mkdb_redis_hash_name);
+  hash.for_each([env, jiw, jiwalk_onrecord](const weak_array key,
+                                            const weak_array value) -> bool {
+    jbyteArray jkey = env->NewByteArray(key.size);
+    env->SetByteArrayRegion(jkey, 0, key.size,
+                            reinterpret_cast<jbyte *>(key.data));
+    jbyteArray jvalue = env->NewByteArray(value.size);
+    env->SetByteArrayRegion(jvalue, 0, value.size,
+                            reinterpret_cast<jbyte *>(value.data));
+    return env->CallBooleanMethod(jiw, jiwalk_onrecord, jkey, jvalue) ==
+           JNI_TRUE;
+  });
 }
 
 /*
