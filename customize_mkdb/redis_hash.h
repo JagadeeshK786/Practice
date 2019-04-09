@@ -9,6 +9,7 @@
 #include <string.h>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace detail {
@@ -27,9 +28,33 @@ make_unique_reply(void *reply) {
       [](redisReply *object) { freeReplyObject(object); });
 }
 
+bool check_types(int type) { return true; }
+
+template <typename _CurrentType, typename... _ExpectedReplyTypes>
+bool check_types(int type, _CurrentType current_type,
+                 _ExpectedReplyTypes... rest_reply_types) {
+  static_assert(std::is_same_v<_CurrentType, int>,
+                "the _ExpectedReplyTypes should be all int");
+  if (current_type == type)
+    return true;
+  if (sizeof...(_ExpectedReplyTypes) == 0)
+    return false;
+  return check_types(type, rest_reply_types...);
+}
+
+template <int... _ExpectedReplyTypes> void verify_reply(redisReply *reply) {
+  if (reply->type == REDIS_REPLY_ERROR)
+    throw std::runtime_error(reply->str);
+  if (!reply || !check_types(reply->type, _ExpectedReplyTypes...))
+    throw std::runtime_error("command failed");
+}
+
 } // namespace detail
 
 struct weak_array {
+  weak_array(const char *in_data)
+      : data(const_cast<char *>(in_data)), size(strlen(in_data)) {}
+
   weak_array(const char *in_data, uint32_t in_size)
       : data(const_cast<char *>(in_data)), size(in_size) {}
 
@@ -38,6 +63,10 @@ struct weak_array {
 };
 
 struct byte_array : public weak_array {
+  byte_array() : byte_array(nullptr, 0) {}
+
+  byte_array(const char *in_data) : byte_array(in_data, strlen(in_data)) {}
+
   byte_array(const char *in_data, uint32_t in_size)
       : weak_array(static_cast<const char *>(malloc(in_size)), in_size) {
     memcpy(this->data, in_data, in_size);
@@ -83,16 +112,54 @@ public:
 
     auto reply = detail::make_unique_reply(
         redisCommand(this->context, command_builder.c_str()));
-    if (!reply || reply->type != REDIS_REPLY_INTEGER)
-      throw std::runtime_error("command failed");
+    detail::verify_reply<REDIS_REPLY_INTEGER>(reply.get());
+
     return reply->integer == 1;
   }
 
-  bool insert_or_assign(const weak_array key, const weak_array value) {}
+  bool insert_or_assign(const weak_array key, const weak_array value) {
+    std::string command_builder("HSET ");
+    command_builder.append(this->hash_name.data, this->hash_name.size);
+    command_builder.append(" ");
+    command_builder.append(key.data, key.size);
+    command_builder.append(" ");
+    command_builder.append(value.data, value.size);
 
-  bool erase(const weak_array key) {}
+    auto reply = detail::make_unique_reply(
+        redisCommand(this->context, command_builder.c_str()));
+    detail::verify_reply<REDIS_REPLY_INTEGER>(reply.get());
 
-  byte_array find(const weak_array key) { return byte_array("", 0); }
+    return reply->integer == 1;
+  }
+
+  bool erase(const weak_array key) {
+    std::string command_builder("HDEL ");
+    command_builder.append(this->hash_name.data, this->hash_name.size);
+    command_builder.append(" ");
+    command_builder.append(key.data, key.size);
+
+    auto reply = detail::make_unique_reply(
+        redisCommand(this->context, command_builder.c_str()));
+    detail::verify_reply<REDIS_REPLY_INTEGER>(reply.get());
+
+    return reply->integer == 1;
+  }
+
+  std::pair<bool, byte_array> find(const weak_array key) {
+    std::string command_builder("HGET ");
+    command_builder.append(this->hash_name.data, this->hash_name.size);
+    command_builder.append(" ");
+    command_builder.append(key.data, key.size);
+
+    auto reply = detail::make_unique_reply(
+        redisCommand(this->context, command_builder.c_str()));
+    detail::verify_reply<REDIS_REPLY_NIL, REDIS_REPLY_STRING>(reply.get());
+
+    if (reply->type == REDIS_REPLY_NIL)
+      return std::pair<bool, byte_array>{false, byte_array()};
+    return std::pair<bool, byte_array>{true,
+                                       byte_array(reply->str, reply->len)};
+  }
 
   void for_each(void (*callback)(const weak_array, const weak_array)) {
     // callback("key", "value");
