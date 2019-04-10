@@ -21,7 +21,7 @@ extern "C" {
 JNIEXPORT void JNICALL Java_mkdb_Storage_walk(JNIEnv *env, jobject jthis,
                                               jlong jhandle, jobject jiw) {
   jclass clazz = env->GetObjectClass(jiw);
-  jmethodID jiwalk_onrecord = env->GetMethodID(clazz, "onRecord", "([B;[B])Z");
+  jmethodID jiwalk_onrecord = env->GetMethodID(clazz, "onRecord", "([B[B)Z");
   if (jiwalk_onrecord == 0)
     return;
   redis_hash hash(mkdb_redis_address, mkdb_redis_port, mkdb_redis_hash_name);
