@@ -34,7 +34,7 @@ JNIEXPORT void JNICALL Java_mkdb_Storage_walk(JNIEnv *env, jobject jthis,
     env->SetByteArrayRegion(jvalue, 0, value.size,
                             reinterpret_cast<jbyte *>(value.data));
     return env->CallBooleanMethod(jiw, jiwalk_onrecord, jkey, jvalue) ==
-           JNI_TRUE;
+           JNI_FALSE;
   });
 }
 
