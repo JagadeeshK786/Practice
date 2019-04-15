@@ -5,6 +5,7 @@
 //  Created by 刘子昂 on 2018/1/20.
 //  Copyright © 2018年 刘子昂. All rights reserved.
 //
+// 20190415纠正，当时搞混了顺序一致性和原子性，下面说的顺序一致其实只是原子性
 
 #include <iostream>
 #include <atomic>
