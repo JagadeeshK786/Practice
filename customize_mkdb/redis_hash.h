@@ -117,7 +117,6 @@ public:
     auto reply = detail::make_unique_reply(
         redisCommand(this->context, command_builder.c_str()));
     detail::verify_reply<REDIS_REPLY_INTEGER>(reply.get());
-
     return reply->integer == 1;
   }
 
@@ -138,6 +137,19 @@ public:
 
   bool erase(const weak_array key) {
     std::string command_builder("HDEL ");
+    command_builder.append(this->hash_name.data, this->hash_name.size);
+    command_builder.append(" ");
+    command_builder.append(key.data, key.size);
+
+    auto reply = detail::make_unique_reply(
+        redisCommand(this->context, command_builder.c_str()));
+    detail::verify_reply<REDIS_REPLY_INTEGER>(reply.get());
+
+    return reply->integer == 1;
+  }
+
+  bool exists(const weak_array key) {
+    std::string command_builder("HEXISTS ");
     command_builder.append(this->hash_name.data, this->hash_name.size);
     command_builder.append(" ");
     command_builder.append(key.data, key.size);

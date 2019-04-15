@@ -5,7 +5,7 @@ include_directories(/Library/Java/JavaVirtualMachines/jdk1.8.0_201.jdk/Contents/
 link_directories(.)
 
 set (CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -g")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -g -O0")
 set(SOURCE_FILES
     mkdb_Storage.h
     mkdb_Storage_IWalk.h

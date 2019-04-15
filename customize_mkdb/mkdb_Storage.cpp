@@ -1,17 +1,38 @@
 #include "mkdb_Storage.h"
 #include "redis_hash.h"
+#include <memory>
 #include <stdbool.h>
+#include <utility>
 /* Implementation for class mkdb_Storage */
 
 #ifndef _Included_mkdb_Storage_Impl
 #define _Included_mkdb_Storage_Impl
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #define mkdb_redis_address "127.0.0.1"
 #define mkdb_redis_port 6379
 #define mkdb_redis_hash_name "mkdb"
+
+std::unique_ptr<char[]> get_jbyte_array(JNIEnv *env, jbyteArray key) {
+  auto buff = std::unique_ptr<char[]>(new char[env->GetArrayLength(key)]);
+  env->GetByteArrayRegion(key, 0, env->GetArrayLength(key),
+                          reinterpret_cast<jbyte *>(buff.get()));
+  return buff;
+}
+
+jbyteArray new_jbyte_array(JNIEnv *env, weak_array src) {
+  jbyteArray jbytes = env->NewByteArray(src.size);
+  env->SetByteArrayRegion(jbytes, 0, src.size,
+                          reinterpret_cast<jbyte *>(src.data));
+  return jbytes;
+}
+
+redis_hash get_new_redis_hash() {
+  return redis_hash(mkdb_redis_address, mkdb_redis_port, mkdb_redis_hash_name);
+}
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Class:     mkdb_Storage
@@ -24,17 +45,12 @@ JNIEXPORT void JNICALL Java_mkdb_Storage_walk(JNIEnv *env, jobject jthis,
   jmethodID jiwalk_onrecord = env->GetMethodID(clazz, "onRecord", "([B[B)Z");
   if (jiwalk_onrecord == 0)
     return;
-  redis_hash hash(mkdb_redis_address, mkdb_redis_port, mkdb_redis_hash_name);
+  redis_hash hash(get_new_redis_hash());
   hash.for_each([env, jiw, jiwalk_onrecord](const weak_array key,
                                             const weak_array value) -> bool {
-    jbyteArray jkey = env->NewByteArray(key.size);
-    env->SetByteArrayRegion(jkey, 0, key.size,
-                            reinterpret_cast<jbyte *>(key.data));
-    jbyteArray jvalue = env->NewByteArray(value.size);
-    env->SetByteArrayRegion(jvalue, 0, value.size,
-                            reinterpret_cast<jbyte *>(value.data));
-    return env->CallBooleanMethod(jiw, jiwalk_onrecord, jkey, jvalue) ==
-           JNI_FALSE;
+    return env->CallBooleanMethod(jiw, jiwalk_onrecord,
+                                  new_jbyte_array(env, key),
+                                  new_jbyte_array(env, value)) == JNI_FALSE;
   });
 }
 
@@ -53,9 +69,10 @@ JNIEXPORT void JNICALL Java_mkdb_Storage_browse(JNIEnv *, jobject, jlong,
  * Method:    exist
  * Signature: (J[BI)Z
  */
-JNIEXPORT jboolean JNICALL Java_mkdb_Storage_exist(JNIEnv *, jobject, jlong,
-                                                   jbyteArray, jint) {
-  return false;
+JNIEXPORT jboolean JNICALL Java_mkdb_Storage_exist(JNIEnv *env, jobject, jlong,
+                                                   jbyteArray key, jint) {
+  return get_new_redis_hash().exists(
+      weak_array(get_jbyte_array(env, key).get(), env->GetArrayLength(key)));
 }
 
 /*
@@ -63,9 +80,13 @@ JNIEXPORT jboolean JNICALL Java_mkdb_Storage_exist(JNIEnv *, jobject, jlong,
  * Method:    find
  * Signature: (J[BI)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_mkdb_Storage_find(JNIEnv *, jobject, jlong,
-                                                    jbyteArray, jint) {
-  return 0;
+JNIEXPORT jbyteArray JNICALL Java_mkdb_Storage_find(JNIEnv *env, jobject, jlong,
+                                                    jbyteArray key, jint) {
+  auto result = get_new_redis_hash().find(
+      weak_array(get_jbyte_array(env, key).get(), env->GetArrayLength(key)));
+  if (!std::get<0>(result))
+    return 0;
+  return new_jbyte_array(env, std::get<1>(result));
 }
 
 /*
@@ -73,10 +94,15 @@ JNIEXPORT jbyteArray JNICALL Java_mkdb_Storage_find(JNIEnv *, jobject, jlong,
  * Method:    replace
  * Signature: (J[BI[BI)Z
  */
-JNIEXPORT jboolean JNICALL Java_mkdb_Storage_replace(JNIEnv *, jobject, jlong,
-                                                     jbyteArray, jint,
-                                                     jbyteArray, jint) {
-  return false;
+JNIEXPORT jboolean JNICALL Java_mkdb_Storage_replace(JNIEnv *env, jobject,
+                                                     jlong, jbyteArray key,
+                                                     jint, jbyteArray value,
+                                                     jint) {
+  auto is_success = get_new_redis_hash().insert_or_assign(
+      weak_array(get_jbyte_array(env, key).get(), env->GetArrayLength(key)),
+      weak_array(get_jbyte_array(env, value).get(),
+                 env->GetArrayLength(value)));
+  return true; // always return true
 }
 
 /*
@@ -84,10 +110,13 @@ JNIEXPORT jboolean JNICALL Java_mkdb_Storage_replace(JNIEnv *, jobject, jlong,
  * Method:    insert
  * Signature: (J[BI[BI)Z
  */
-JNIEXPORT jboolean JNICALL Java_mkdb_Storage_insert(JNIEnv *, jobject, jlong,
-                                                    jbyteArray, jint,
-                                                    jbyteArray, jint) {
-  return false;
+JNIEXPORT jboolean JNICALL Java_mkdb_Storage_insert(JNIEnv *env, jobject, jlong,
+                                                    jbyteArray key, jint,
+                                                    jbyteArray value, jint) {
+  return get_new_redis_hash().insert(
+      weak_array(get_jbyte_array(env, key).get(), env->GetArrayLength(key)),
+      weak_array(get_jbyte_array(env, value).get(),
+                 env->GetArrayLength(value)));
 }
 
 /*
@@ -95,9 +124,10 @@ JNIEXPORT jboolean JNICALL Java_mkdb_Storage_insert(JNIEnv *, jobject, jlong,
  * Method:    remove
  * Signature: (J[BI)Z
  */
-JNIEXPORT jboolean JNICALL Java_mkdb_Storage_remove(JNIEnv *, jobject, jlong,
-                                                    jbyteArray, jint) {
-  return false;
+JNIEXPORT jboolean JNICALL Java_mkdb_Storage_remove(JNIEnv *env, jobject, jlong,
+                                                    jbyteArray key, jint) {
+  return get_new_redis_hash().erase(
+      weak_array(get_jbyte_array(env, key).get(), env->GetArrayLength(key)));
 }
 
 /*
