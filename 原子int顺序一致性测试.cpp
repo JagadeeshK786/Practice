@@ -29,7 +29,7 @@ bool test_atomic(){
         //x86下ok但不通用
         //int tmp=value.load(memory_order_relaxed);
         //while(!value.compare_exchange_weak(tmp, tmp+1, std::memory_order_relaxed));
-        //通用
+        //通用(这个最牛逼)
         //int tmp=value.load(memory_order_acquire);
         //while(!value.compare_exchange_weak(tmp, tmp+1, std::memory_order_acq_rel,std::memory_order_acquire));
     };
