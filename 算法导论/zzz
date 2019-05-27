@@ -1,0 +1,33 @@
+template <typename IterType, typename PredType>
+void merge_sort(IterType begin, IterType end, const PredType &pred)
+{
+	std::stack<pack_t<IterType>> callstack;
+	auto state_machine = [&pred, &callstack](pack_t<IterType> &context) -> bool {
+		switch (context.state)
+		{
+		case 0:
+		{
+			auto distance = std::distance(context.begin, context.end);
+			if (context.begin == context.end || distance == 1)
+				return false;
+			context.middle = distance / 2;
+			callstack.emplace(context.begin, context.begin + context.middle);
+		}
+		break;
+		case 1:
+			callstack.emplace(context.begin + context.middle, context.end);
+		break;
+		case 2:
+			merge_impl(context.begin, context.begin + context.middle, context.end, pred);
+			return false;
+		break;
+		}
+		context.state++;
+		return true;
+	};
+
+	callstack.emplace(begin, end);
+	while (!callstack.empty())
+		if (!state_machine(callstack.top()))
+			callstack.pop();
+}
