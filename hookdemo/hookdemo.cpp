@@ -5,6 +5,6 @@
 //malloc hook
 void* malloc(std::size_t s) {
 	auto real_malloc = reinterpret_cast<void*(*)(std::size_t)>(dlsym(RTLD_NEXT, "malloc"));
-	std::cout << "malloc has been called" << std::endl;
+	std::cout << "malloc(" << s << ")" << std::endl;
 	return real_malloc(s);
 }
