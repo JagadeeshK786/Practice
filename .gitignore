@@ -5,8 +5,10 @@
 *.bin
 customize_mkdb/CMakeCache.txt
 *.out
+*.o
+*.a
+*.so
 customize_mkdb/CMakeFiles
 customize_mkdb/cmake_install.cmake
-Makefile
 libdb.dylib
 customize_mkdb/libdb_x86_64.dylib
