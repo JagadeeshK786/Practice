@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 //TODO:删除功能、处理map满的情况
 //删除功能这个类先不做，考虑是不是线性搜索算法不适合做删除功能
 //支持自定义hash
+//参考一个实现https://github.com/boundary/high-scale-lib/blob/master/src/main/java/org/cliffc/high_scale_lib/NonBlockingHashMap.java
 //无锁hash结构的两个主要难点：
 //1.hash冲突
 //2.何时回收某些内存（因为它可能正被某个线程访问）http://erdani.com/publications/cuj-2004-12.pdf
