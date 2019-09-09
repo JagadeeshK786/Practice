@@ -46,8 +46,9 @@ public class FixedLockFreeHashMap<K, V> implements java.util.Map<K, V> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public V get(Object key) {
-		int keyHash = key.hashCode();
-		for (int entryKey = keyHash % this.data.length(); ; entryKey = ++keyHash % this.data.length()) {
+        int keyHash = key.hashCode();
+		int keyHashIncreaseSequence = keyHash;
+		for (int entryKey = keyHashIncreaseSequence % this.data.length(); ; entryKey = ++keyHashIncreaseSequence % this.data.length()) {
 			InternalEntry entry = (InternalEntry) this.data.get(entryKey);
 			if (entry.key == keyHash)
 				return (V) entry.value;//found it
@@ -104,12 +105,13 @@ public class FixedLockFreeHashMap<K, V> implements java.util.Map<K, V> {
 	}
 
 	private InternalEntry putImpl(InternalEntry newEntry) {
-		int hash = newEntry.key;
+		int keyHash = key.hashCode();
+		int keyHashIncreaseSequence = keyHash;
 		InternalEntry previousEntry = null;
-		for (int entryKey = hash % this.data.length(); previousEntry == null; entryKey = ++hash % this.data.length()) {
+		for (int entryKey = keyHashIncreaseSequence % this.data.length(); previousEntry == null; entryKey = ++keyHashIncreaseSequence % this.data.length()) {
 			do {
 				previousEntry = (InternalEntry) this.data.get(entryKey);
-				if (previousEntry.key != entryKey && previousEntry.key != 0) {
+				if (previousEntry.key != keyHash && previousEntry.key != 0) {
 					//this entry has been used by other key(hash collision occurs), try next entry
 					previousEntry = null;
 					break;
