@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 //TODO:删除功能、处理map满的情况
 //删除功能这个类先不做，考虑是不是线性搜索算法不适合做删除功能
 //支持自定义hash
+//http://erdani.com/publications/cuj-2004-12.pdf
 
 public class FixedLockFreeHashMap<K, V> implements java.util.Map<K, V> {
 
