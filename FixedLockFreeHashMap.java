@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 //无锁hash结构的两个主要难点：
 //1.hash冲突
 //2.何时回收某些内存（因为它可能正被某个线程访问）http://erdani.com/publications/cuj-2004-12.pdf
+//http://ifeve.com/hazard-pointer/
 //3.考虑aba问题?
 
 public class FixedLockFreeHashMap<K, V> implements java.util.Map<K, V> {
